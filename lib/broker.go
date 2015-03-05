@@ -4,6 +4,10 @@ import (
 )
 
 var Logger = newLogger()
+const M = "messages"
+const E = "events"
+const T = "timers"
+const L = "links"
 
 type Broker struct {
 	SlackMeta		*ApiResponse
@@ -12,10 +16,7 @@ type Broker struct {
 	Modules			map[string] *Module
 	Brain				*Brain
 	ApiResponses	map[int32]chan map[string]interface{}
-	MessageCallbacks	[]*messageCallback
-	EventCallbacks		[]*eventCallback
-	TimerCallbacks		[]*timerCallback
-	LinkCallbacks		[]*linkCallback
+	CallbackIndex	map[string]map[string]*interface{}
 	ReadFilters    []*ReadFilter
 	WriteFilters   []*WriteFilter
 	MID				int32
@@ -35,34 +36,6 @@ type WriteThread struct{
 	broker			*Broker
 	Chan           chan Event
 	SyncChan        chan bool
-}
-
-type messageCallback struct{
-	ID					string
-	Pattern			string
-	Method			string
-	Chan				chan MessageCallback
-}
-
-type MessageCallback struct{
-	Message:			Event
-	Match:			string
-}
-
-type eventCallback struct{
-	Name				string
-	Key				string
-	Val				string
-	Chan				chan map[string]interface{}
-}
-type timerCallback struct{
-	Name				string
-	Schedule			string
-	Chan				chan time.Time
-}
-type linkCallback struct{
-	Name				string
-	Chan				map[string]interface{}
 }
 
 type ReadFilter struct{
@@ -229,7 +202,8 @@ func (b *Broker) handleMessage(thingy map[string]interface{}){
       json.Unmarshal(jthingy, message)
       message.Broker = b
    	botNamePat := fmt.Sprintf(`^(?:@?%s[:,]?)\s+(?:${1})`, b.Config.Name)
-   	for _,callback := range b.messageCallbacks{
+   	for _, cbInterface := range b.cbIndex[M]{
+		callback := cbInterface.(messageCallback)
       var r *regexp.Regexp
       if callback.Method == `RESPOND`{
          r = regexp.MustCompile(strings.Replace(botNamePat,"${1}", callback.Val, 1))
@@ -239,20 +213,63 @@ func (b *Broker) handleMessage(thingy map[string]interface{}){
       if r.MatchString(message.Text){
          match:=r.FindAllStringSubmatch(message.Text, -1)[0]
          Logger.Debug(`Broker:: running callback: `, callback.Name)
-         callback.Chan <- MessageCallback{ Message: message, Match: match }
+         callback.Chan <- struct{ Message: message, Match: match }
       }
    }
 }
 
 func (b *Broker) handleEvent(thingy map[string]interface{}){
 	if b.eventCallbacks == nil { return }
-	for _,callback := range b.eventCallbacks{
+	for _,cbInterface := range b.cbIndex[`events`]{
+		callback := cbInterface.(eventCallback)
 		if keyVal, keyExists := thingy[callback.Key]; keyExists && replyVal != nil{
       	if matches,_ := regex.MatchString(callback.Val, keyVal); matches{
-				callback.Chan <- Thingy
+				callback.Chan <- thingy
 			}
 		}
 	}
 }
 
+func (b *Broker) MessageCallback(pattern string, method string) (MessageCallback){
+	callback := &messageCallback {
+		ID:			fmt.Sprintf("message:%s",len(b.cbIndex[M])),
+		Pattern: 	pattern,
+		Method: 		method,
+		Chan:			new(chan struct{Message: string, Match: string}),
+	}
+
+	if err := RegisterCallback(callback); err != nil{
+		Logger.Debug("error registering callback ", callback.ID, ":: ",err)
+		return nil
+	}
+	return callback
+}
+	
+func (b *Broker) EventCallback(key string, val string) EventCallback{
+	callback := &EventCallback{
+		ID:			fmt.Sprintf("event:%s",len(b.cbIndex[E])),
+		Key: 			key,
+		Val: 			val,
+		Chan:			new(chan map[string]interface{}),
+	}
+	if err := RegisterCallback(callback); err != nil{
+		Logger.Debug("error registering callback ", callback.ID, ":: ",err)
+		return nil
+	}
+	return callback
+}
+
+func (b *Broker) TimerCallback(thingy map[string]interface{}){
+	callback := &TimerCallback{
+		ID:			fmt.Sprintf("event:%s",len(b.cbIndex[E])),
+		Schedule: 	schedule,
+		Chan:			new(chan time.Time)
+	}
+	if err := RegisterCallback(callback); err != nil{
+		Logger.Debug("error registering callback ", callback.ID, ":: ",err)
+		return nil
+	}
+	return callback
+}
+//func (b *Broker) LinkCallback(thingy map[string]interface{}){
 
