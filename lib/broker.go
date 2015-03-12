@@ -245,35 +245,54 @@ func (b *Broker) Send(e *Event) chan map[string]interface{}{
 }
 
 // Say something in the named channel (or the default channel if none specified)
-func (b *Broker) Say(s string, channel ...string){
+func (b *Broker) Say(s string, channel ...string) map[string]interface{}{
    var c string
    if channel != nil{
       c=channel[0]
    }else{
       c=b.DefaultChannel()
    }
-   b.Send(&Event{
+   resp := b.Send(&Event{
       Type:    `message`,
       Channel: c,
       Text:    s,
    })
+	return resp
 }
 
-func (b *Broker) Reply(thingy *interface{}) map[string]interface{}{
+// send a reply to any sort of event that contains an ID and Channel attribute
+func (b *Broker) Reply(text string, thingy *interface{}) map[string]interface{}{
 	var id,channel string
 	var exists bool
-	if id,exists = thingy['id']; !exists{
-		return nil
+	switch thingy.(type){
+		case Event:
+		eThingy:=thingy.(Event)
+		if eThingy.ID != `` && eThingy.Channel != ``{
+			id = eThingy.ID
+			channel = eThingy.Channel
+		}else{
+			return nil
+		}
+		case map[string]interface{}:
+		mThingy:=thingy.(map[string]interface{})
+		if id,exists = mThingy[`id`]; !exists || id == `` {
+			return nil
+		}
+		if channel,exists = mThingy[`channel`]; !exists || channel == ``{
+			return nil
+		}
+		id = mThingy[`id`]
+		channel = mThingy[`channel`]
+		default: 
+			return nil
 	}
-	if channel,exists = thingy['channel']; !exists{
-		return nil
-	}
-	
-
-	
-
-	
-
+	replyText := Sprintf(`%s: %s`, b.SlackMeta.GetUserName(id), text)
+	resp:= b.Send(&Event{
+		Type: `message`,
+		Channel: channel,
+		Text: 	replyText,
+	})
+}
 	
 
 //returns the Team's default channel
