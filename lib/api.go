@@ -13,7 +13,7 @@ import(
 type ApiRequest struct{
 	URL		string
 	Values	url.Values
-	Bot		*Sbot
+	Broker	*Broker
 }
 
 //base function for communicating with the slack api
@@ -36,11 +36,11 @@ func MakeAPIReq(req ApiRequest)(*ApiResponse, error){
 }
 
 // Go forth and get a websocket for RTM and all the Slack Team Metadata
-func (bot *Sbot) getMeASocket() error {
+func (b *Broker) getMeASocket() error {
    var req = ApiRequest{
       URL: `https://slack.com/api/rtm.start`,
 		Values: make(url.Values),
-      Bot: bot,
+      Broker: b,
    }
    authResp,err := MakeAPIReq(req)
    if err != nil{

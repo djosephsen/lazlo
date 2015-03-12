@@ -28,21 +28,22 @@ type Broker struct {
 type Module struct{
 	Name				string
 	Usage				string
-	Run				func(Broker)
+	Run				func(*Broker)
 	SigChan			chan os.Signal
-}		   
+	SyncChan			chan bool
+}
 
 type WriteThread struct{
 	broker			*Broker
 	Chan           chan Event
-	SyncChan        chan bool
+	SyncChan       chan bool
 }
 
 type ReadFilter struct{
 	Name				string
 	Usage				string
 	Run      func(thingy map[string]interface{}) map[string]interface{}
-}		   
+}
 
 type WriteFilter struct{
 	Name				string
@@ -68,22 +69,26 @@ func NewBroker() (*Broker, error){
 		SigChan:        make(chan os.Signal),
 		SyncChan:       make(chan bool),
 	}
-	broker.WriteThread.Broker=broker
+	broker.WriteThread.Broker = broker
 
 	//connect to slack and establish an RTM websocket
 	socket,meta,err := getMeASocket(broker)
 	if err != nil{
 		return err
 	}
-	broker.SlackMeta=&meta
-	broker.Socket=&socket
+	broker.SlackMeta = &meta
+	broker.Socket = &socket
 
 	var brain Brain
 	brain,err = newBrain()
 	if err != nil{
-		return err
+		return broker,err
 	}
-	broker.Brain=&brain
+	broker.Brain = &brain
+	if err = brain.Open(); err != nil{
+		Logger.Error(`couldn't open mah brain! `, err)
+		return broker,err
+	}
 	return broker,nil
 }
 
@@ -230,46 +235,53 @@ func (b *Broker) handleEvent(thingy map[string]interface{}){
 	}
 }
 
-func (b *Broker) MessageCallback(pattern string, method string) (MessageCallback){
-	callback := &messageCallback {
-		ID:			fmt.Sprintf("message:%s",len(b.cbIndex[M])),
-		Pattern: 	pattern,
-		Method: 		method,
-		Chan:			new(chan struct{Message: string, Match: string}),
-	}
+// this is the primary interface to Slack's write socket. Use this to send events.
+func (b *Broker) Send(e *Event) chan map[string]interface{}{
+   e.ID = b.NextMID()
+   b.APIResponses[e.ID]=make(chan map[string]interface{},1)
+   Logger.Debug(`created APIResponse: `,e.ID)
+   b.WriteThread.Chan <- *e
+   return b.APIResponses[e.ID]
+}
 
-	if err := RegisterCallback(callback); err != nil{
-		Logger.Debug("error registering callback ", callback.ID, ":: ",err)
+// Say something in the named channel (or the default channel if none specified)
+func (b *Broker) Say(s string, channel ...string){
+   var c string
+   if channel != nil{
+      c=channel[0]
+   }else{
+      c=b.DefaultChannel()
+   }
+   b.Send(&Event{
+      Type:    `message`,
+      Channel: c,
+      Text:    s,
+   })
+}
+
+func (b *Broker) Reply(thingy *interface{}) map[string]interface{}{
+	var id,channel string
+	var exists bool
+	if id,exists = thingy['id']; !exists{
 		return nil
 	}
-	return callback
-}
+	if channel,exists = thingy['channel']; !exists{
+		return nil
+	}
 	
-func (b *Broker) EventCallback(key string, val string) EventCallback{
-	callback := &EventCallback{
-		ID:			fmt.Sprintf("event:%s",len(b.cbIndex[E])),
-		Key: 			key,
-		Val: 			val,
-		Chan:			new(chan map[string]interface{}),
-	}
-	if err := RegisterCallback(callback); err != nil{
-		Logger.Debug("error registering callback ", callback.ID, ":: ",err)
-		return nil
-	}
-	return callback
-}
 
-func (b *Broker) TimerCallback(thingy map[string]interface{}){
-	callback := &TimerCallback{
-		ID:			fmt.Sprintf("event:%s",len(b.cbIndex[E])),
-		Schedule: 	schedule,
-		Chan:			new(chan time.Time)
-	}
-	if err := RegisterCallback(callback); err != nil{
-		Logger.Debug("error registering callback ", callback.ID, ":: ",err)
-		return nil
-	}
-	return callback
-}
-//func (b *Broker) LinkCallback(thingy map[string]interface{}){
+	
 
+	
+
+	
+
+//returns the Team's default channel
+func (b *Broker) DefaultChannel() string{
+   for _, c := range b.SlackMeta.Channels{
+      if c.IsGeneral{
+         return c.ID
+      }
+   }
+   return b.SlackMeta.Channels[0].ID
+}
