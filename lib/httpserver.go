@@ -1,4 +1,4 @@
-package slackerlib
+package lib
 
 import (
 	"net/http"

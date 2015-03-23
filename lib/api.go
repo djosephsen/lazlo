@@ -1,4 +1,4 @@
-package slackerlib
+package lib
 
 import(
 	"fmt"
@@ -121,8 +121,8 @@ func (meta *ApiResponse) GetChannelByName(name string) *Channel{
 
 // convinience function to reply to a message event
 func (event *Event) Reply(s string) chan map[string]interface{}{
-   replyText:=fmt.Sprintf(`%s: %s`, event.Sbot.Meta.GetUserName(event.User), s)
-   return event.Sbot.Send(&Event{
+   replyText:=fmt.Sprintf(`%s: %s`, event.Broker.Meta.GetUserName(event.User), s)
+   return event.Broker.Send(&Event{
       Type:    event.Type,
       Channel: event.Channel,
       Text:    replyText,
@@ -131,21 +131,9 @@ func (event *Event) Reply(s string) chan map[string]interface{}{
 
 // convinience function to respond to a message event
 func (event *Event) Respond(s string) chan map[string]interface{}{
-   return event.Sbot.Send(&Event{
+   return event.Broker.Send(&Event{
       Type:    event.Type,
       Channel: event.Channel,
       Text:    s,
       })
-}
-
-// convinience function to join a channel
-// bots aren't actually allowed to use this command (I should probably delete this)
-func (channel *Channel) Join(bot *Sbot) (*ApiResponse, error){
-   var req = ApiRequest{
-      URL: `https://slack.com/api/channels.join`,
-		Values: url.Values{`name`: {channel.Name}},
-      Bot: bot,
-   }
-	resp, err := MakeAPIReq(req)
-	return resp, err	
 }

@@ -1,4 +1,4 @@
-package slackerlib
+package lib
 
 type ApiResponse struct {
 	Bots []Bot `json:"bots,omitempty"`

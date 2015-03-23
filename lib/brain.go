@@ -1,4 +1,4 @@
-package slackerlib
+package lib
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ type Brain interface {
 }
 
 // NewStore returns an initialized store
-func (b *Sbot) NewBrain() (*Brain, error) {
+func (b *Broker) NewBrain() (*Brain, error) {
 	var brain Brain
 	var err error
 	if b.Config.RedisURL != ``{
@@ -39,7 +39,7 @@ type ramBrain struct {
 }
 
 // New returns a new initialized ramBrain that implements Brain
-func newRAMBrain(b *Sbot) (Brain, error) {
+func newRAMBrain(b *Broker) (Brain, error) {
 	rb := &ramBrain{
 		data: map[string][]byte{},
 	}
@@ -84,7 +84,7 @@ type redisBrain struct {
 }
 
 // New returns an new initialized store
-func newRedisBrain(b *Sbot) (Brain, error) {
+func newRedisBrain(b *Broker) (Brain, error) {
 	s := &redisBrain{
 		url: b.Config.RedisURL,
 		nameSpace: b.Config.Name,

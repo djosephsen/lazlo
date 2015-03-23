@@ -6,7 +6,7 @@ import(
 type MessageCallback struct{
    ID             string
    Pattern        string
-   Method         string
+   Respond        bool // if true, only respond if the bot is mentioned by name
    Chan           chan struct{Message: string, Match: string}
 }
 
@@ -18,8 +18,10 @@ type EventCallback struct{
 }
 type TimerCallback struct{
    ID           string
-   Schedule       string
-   Chan           chan time.Time
+   Schedule     string
+   Chan         chan time.Time
+	State			 string
+	Next			 time.Time
 }
 type LinkCallback struct{
    ID           string
@@ -30,16 +32,16 @@ func (b *Broker) RegisterCallback(callback *interface{}) error{
 	switch callback.(type){
 		case MessageCallback:
 			m:=callback.(MessageCallback)
-			b.cbIndex[M][m.ID]=callback
+			b.cbIndex[M][m.ID] = &callback
 		case EventCallback:
 			e:=callback.(EventCallback)
-			b.cbIndex[E][e.ID]=callback
+			b.cbIndex[E][e.ID] = &callback
 		case TimerCallback:
 			t:=callback.(TimerCallback)
-			b.cbIndex[T][t.ID]=callback
+			b.cbIndex[T][t.ID] = &callback
 		case LinkCallback:
 			l:=callback.(LinkCallback)
-			b.cbIndex[L][l.ID]=callback
+			b.cbIndex[L][l.ID] = &callback
 		default:
 			err:=fmt.Errorf("unknown type in register callback: %T",cbObj.(type))
 			Logger.Error(err)
@@ -70,16 +72,23 @@ func (b *Broker) EventCallback(key string, val string) EventCallback{
       Val:        val,
       Chan:       new(chan map[string]interface{}),
    }
+
+   if err := callback.Start(); err != nil{
+      Logger.Debug("error registering callback ", callback.ID, ":: ",err)
+      return nil
+	}
+
    if err := RegisterCallback(callback); err != nil{
       Logger.Debug("error registering callback ", callback.ID, ":: ",err)
       return nil
    }
+
    return callback
 }
 
-func (b *Broker) TimerCallback(thingy map[string]interface{}){
+func (b *Broker) TimerCallback(schedule string) TimerCallback{
    callback := &TimerCallback{
-      ID:         fmt.Sprintf("event:%s",len(b.cbIndex[E])),
+      ID:         fmt.Sprintf("timer:%s",len(b.cbIndex[E])),
       Schedule:   schedule,
       Chan:       new(chan time.Time)
    }

@@ -16,7 +16,7 @@ type Broker struct {
 	Modules			map[string] *Module
 	Brain				*Brain
 	ApiResponses	map[int32]chan map[string]interface{}
-	CallbackIndex	map[string]map[string]*interface{}
+	cbIndex			map[string]map[string]interface{} //cbIndex[type][id]=pointer
 	ReadFilters    []*ReadFilter
 	WriteFilters   []*WriteFilter
 	MID				int32
@@ -210,7 +210,7 @@ func (b *Broker) handleMessage(thingy map[string]interface{}){
    	for _, cbInterface := range b.cbIndex[M]{
 		callback := cbInterface.(messageCallback)
       var r *regexp.Regexp
-      if callback.Method == `RESPOND`{
+      if callback.Respond{ 
          r = regexp.MustCompile(strings.Replace(botNamePat,"${1}", callback.Val, 1))
       }else{
          r = regexp.MustCompile(callback.Pattern)
@@ -225,7 +225,7 @@ func (b *Broker) handleMessage(thingy map[string]interface{}){
 
 func (b *Broker) handleEvent(thingy map[string]interface{}){
 	if b.eventCallbacks == nil { return }
-	for _,cbInterface := range b.cbIndex[`events`]{
+	for _,cbInterface := range b.cbIndex[E]{
 		callback := cbInterface.(eventCallback)
 		if keyVal, keyExists := thingy[callback.Key]; keyExists && replyVal != nil{
       	if matches,_ := regex.MatchString(callback.Val, keyVal); matches{
@@ -260,8 +260,8 @@ func (b *Broker) Say(s string, channel ...string) map[string]interface{}{
 	return resp
 }
 
-// send a reply to any sort of event that contains an ID and Channel attribute
-func (b *Broker) Reply(text string, thingy *interface{}) map[string]interface{}{
+// send a reply to any sort of thingy that contains an ID and Channel attribute
+func (b *Broker) Respond(text string, thingy *interface{}, isReply bool) chan map[string]interface{}{
 	var id,channel string
 	var exists bool
 	switch thingy.(type){
@@ -286,14 +286,19 @@ func (b *Broker) Reply(text string, thingy *interface{}) map[string]interface{}{
 		default: 
 			return nil
 	}
-	replyText := Sprintf(`%s: %s`, b.SlackMeta.GetUserName(id), text)
-	resp:= b.Send(&Event{
+
+	if isReply{
+		replyText := Sprintf(`%s: %s`, b.SlackMeta.GetUserName(id), text)
+	}else{
+		replyText := text
+	}
+
+	return b.Send(&Event{
 		Type: `message`,
 		Channel: channel,
 		Text: 	replyText,
 	})
 }
-	
 
 //returns the Team's default channel
 func (b *Broker) DefaultChannel() string{
