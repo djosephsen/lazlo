@@ -193,8 +193,11 @@ func (b *Broker) handleApiReply(thingy map[string]interface{}){
    Logger.Debug(`Broker:: reply message, to: `, thingy[`reply_to`])
    if callBackChannel, exists := b.APIResponses[chanID]; exists{
       callBackChannel <- thingy
-      delete(b.APIResponses,chanID) //dont leak channels
-      Logger.Debug(`deleted callback: `,chanID)
+		//dont leak channels
+      Logger.Debug(`deleting callback: `,chanID)
+		close(callBackChannel)
+		<- callBackChannel
+      delete(b.APIResponses,chanID) 
    } else {
       Logger.Debug(`no such channel: `,chanID)
    }
