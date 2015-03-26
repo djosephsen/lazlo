@@ -1,9 +1,18 @@
 package lib
 
 import (
+	"github.com/gorilla/websocket"
+   "os"
+   "time"
+   "encoding/json"
+   "fmt"
+   "strings"
+   "regexp"
 )
 
 var Logger = newLogger()
+
+// Types of Callback
 const M = "messages"
 const E = "events"
 const T = "timers"
@@ -14,7 +23,7 @@ type Broker struct {
 	Config			*Config
 	Socket			*websocket.Conn
 	Modules			map[string] *Module
-	Brain				*Brain
+	Brain				Brain
 	ApiResponses	map[int32]chan map[string]interface{}
 	cbIndex			map[string]map[string]interface{} //cbIndex[type][id]=pointer
 	ReadFilters    []*ReadFilter
@@ -23,6 +32,7 @@ type Broker struct {
 	WriteThread		*WriteThread
 	SigChan			chan os.Signal
 	SyncChan			chan bool
+	ThreadCount		int32
 }
 
 type Module struct{
@@ -42,62 +52,64 @@ type WriteThread struct{
 type ReadFilter struct{
 	Name				string
 	Usage				string
-	Run      func(thingy map[string]interface{}) map[string]interface{}
+	Run      		func(thingy map[string]interface{}) map[string]interface{}
 }
 
 type WriteFilter struct{
 	Name				string
 	Usage				string
-	Run      func(e *Event)
+	Run      		func(e *Event)
 }		   
 
 func NewBroker() (*Broker, error){
 //return a Broker instance
 
 	broker := &Broker{
+		MID:           0,
 		Config:			newConfig(),
-		ApiResponses:   make(map[int32]chan map[string]interface{}),
-		MessageChans:   make([]chan Event),
-		EventChans:     make([]chan map[string]interface{}),
-		TimerChans:     make([]chan time.Time),
-		LinkChans:      make([]chan map[string]interface{}),
-		MID:            0,
-		WriteThread:    &WriteThread{
+		cbIndex:			make(map[string]map[string]interface{}),
+		WriteThread:   &WriteThread{
 			Chan:			make(chan Event),
-			SyncChan:		make(chan Bool),
+			SyncChan:	make(chan bool),
 		},
 		SigChan:        make(chan os.Signal),
 		SyncChan:       make(chan bool),
 	}
-	broker.WriteThread.Broker = broker
 
 	//connect to slack and establish an RTM websocket
-	socket,meta,err := getMeASocket(broker)
+	socket,meta,err := broker.getASocket()
 	if err != nil{
-		return err
+		return nil,err
 	}
-	broker.SlackMeta = &meta
-	broker.Socket = &socket
+	broker.Socket = socket
+	broker.SlackMeta = meta
 
-	var brain Brain
-	brain,err = newBrain()
+	broker.Brain,err = broker.newBrain()
 	if err != nil{
-		return broker,err
+		return nil,err
 	}
-	broker.Brain = &brain
-	if err = brain.Open(); err != nil{
+//	broker.Brain = brain
+	if err = broker.Brain.Open(); err != nil{
 		Logger.Error(`couldn't open mah brain! `, err)
 		return broker,err
 	}
 	return broker,nil
 }
 
-func (b *broker) Start(){
-	go b.WriteThread.Start()
+func (broker *Broker) Start(){
+	go broker.StartHttp()
+	go broker.WriteThread.Start()
 	for {
 		thingy := make(map[string]interface{})
-		b.Ws.ReadJSON(&thingy)
-		go b.This(thingy)
+		broker.Socket.ReadJSON(&thingy)
+		go broker.This(thingy)
+	}
+}
+
+func (b *Broker) StartModules(){
+	for _,module := range b.Modules{
+		go module.Run(b)
+	}
 }
 
 func (w *WriteThread) Start(){
@@ -115,13 +127,13 @@ func (w *WriteThread) Start(){
             Text: fmt.Sprintf("ERROR! Response too large. %v Bytes!", len(ejson)),
             }
          }
-            w.Broker.Ws.WriteJSON(e)
+            w.broker.Socket.WriteJSON(e)
             time.Sleep(time.Second * 1)
       case stop = <- w.SyncChan:
          stop = true
          }
       }
-   b.SyncChan <- true
+   w.broker.SyncChan <- true
 }
 
  //probably need to make this thread-safe (for now only the write thread uses it)
@@ -166,11 +178,11 @@ func (b *Broker) Register(things ...interface{}){
       case Module:
 			m:=thing.(Module)
          Logger.Debug(`registered Module: `,m.Name)
-         b.Modules=append(b.Modules, &m)
+         b.Modules[m.Name] = &m
  		case ReadFilter:
          r:=thing.(ReadFilter)
          Logger.Debug(`registered Read Filter: `, r.Name)
-         b.PreFilters=append(b.ReadFilters, &r)
+         b.ReadFilters=append(b.ReadFilters, &r)
       case WriteFilter:
          w:=thing.(WriteFilter)
          Logger.Debug(`registered Write Filter: `, w.Name)
@@ -182,56 +194,50 @@ func (b *Broker) Register(things ...interface{}){
    }
 }
 
-func (b *Broker) StartModules(){
-	for _,module := range b.Modules{
-		go module.Run(b)
-	}
-}
-
 func (b *Broker) handleApiReply(thingy map[string]interface{}){
    chanID:=int32(thingy[`reply_to`].(float64))
    Logger.Debug(`Broker:: reply message, to: `, thingy[`reply_to`])
-   if callBackChannel, exists := b.APIResponses[chanID]; exists{
+   if callBackChannel, exists := b.ApiResponses[chanID]; exists{
       callBackChannel <- thingy
 		//dont leak channels
       Logger.Debug(`deleting callback: `,chanID)
 		close(callBackChannel)
 		<- callBackChannel
-      delete(b.APIResponses,chanID) 
+      delete(b.ApiResponses,chanID) 
    } else {
       Logger.Debug(`no such channel: `,chanID)
    }
 }
 
 func (b *Broker) handleMessage(thingy map[string]interface{}){
-		if b.messageCallbacks == nil { return }
+		if b.cbIndex[M] == nil { return }
       message := new(Event)
       jthingy,_ := json.Marshal(thingy)
       json.Unmarshal(jthingy, message)
       message.Broker = b
    	botNamePat := fmt.Sprintf(`^(?:@?%s[:,]?)\s+(?:${1})`, b.Config.Name)
    	for _, cbInterface := range b.cbIndex[M]{
-		callback := cbInterface.(messageCallback)
+		callback := cbInterface.(MessageCallback)
       var r *regexp.Regexp
       if callback.Respond{ 
-         r = regexp.MustCompile(strings.Replace(botNamePat,"${1}", callback.Val, 1))
+         r = regexp.MustCompile(strings.Replace(botNamePat,"${1}", callback.Pattern, 1))
       }else{
          r = regexp.MustCompile(callback.Pattern)
       }
       if r.MatchString(message.Text){
          match:=r.FindAllStringSubmatch(message.Text, -1)[0]
-         Logger.Debug(`Broker:: running callback: `, callback.Name)
-         callback.Chan <- struct{ Message: message, Match: match }
+         Logger.Debug(`Broker:: running callback: `, callback.ID)
+         callback.Chan <- PatternMatch{ Event: message, Match: match, }
       }
    }
 }
 
 func (b *Broker) handleEvent(thingy map[string]interface{}){
-	if b.eventCallbacks == nil { return }
+	if b.cbIndex[E] == nil { return }
 	for _,cbInterface := range b.cbIndex[E]{
-		callback := cbInterface.(eventCallback)
-		if keyVal, keyExists := thingy[callback.Key]; keyExists && replyVal != nil{
-      	if matches,_ := regex.MatchString(callback.Val, keyVal); matches{
+		callback := cbInterface.(EventCallback)
+		if keyVal, keyExists := thingy[callback.Key]; keyExists && keyVal != nil{
+      	if matches,_ := regexp.MatchString(callback.Val, keyVal.(string)); matches{
 				callback.Chan <- thingy
 			}
 		}
@@ -241,14 +247,14 @@ func (b *Broker) handleEvent(thingy map[string]interface{}){
 // this is the primary interface to Slack's write socket. Use this to send events.
 func (b *Broker) Send(e *Event) chan map[string]interface{}{
    e.ID = b.NextMID()
-   b.APIResponses[e.ID]=make(chan map[string]interface{},1)
+   b.ApiResponses[e.ID]=make(chan map[string]interface{},1)
    Logger.Debug(`created APIResponse: `,e.ID)
    b.WriteThread.Chan <- *e
-   return b.APIResponses[e.ID]
+   return b.ApiResponses[e.ID]
 }
 
 // Say something in the named channel (or the default channel if none specified)
-func (b *Broker) Say(s string, channel ...string) map[string]interface{}{
+func (b *Broker) Say(s string, channel ...string) chan map[string]interface{}{
    var c string
    if channel != nil{
       c=channel[0]
@@ -264,36 +270,39 @@ func (b *Broker) Say(s string, channel ...string) map[string]interface{}{
 }
 
 // send a reply to any sort of thingy that contains an ID and Channel attribute
-func (b *Broker) Respond(text string, thingy *interface{}, isReply bool) chan map[string]interface{}{
+func (b *Broker) Respond(text string, thing *interface{}, isReply bool) chan map[string]interface{}{
 	var id,channel string
 	var exists bool
+	
+	thingy := *thing
 	switch thingy.(type){
 		case Event:
 		eThingy:=thingy.(Event)
-		if eThingy.ID != `` && eThingy.Channel != ``{
-			id = eThingy.ID
+		if eThingy.User != `` && eThingy.Channel != ``{
+			id = eThingy.User
 			channel = eThingy.Channel
 		}else{
 			return nil
 		}
 		case map[string]interface{}:
 		mThingy:=thingy.(map[string]interface{})
-		if id,exists = mThingy[`id`]; !exists || id == `` {
+		if id,exists = mThingy[`id`].(string); !exists || id == `` {
 			return nil
 		}
-		if channel,exists = mThingy[`channel`]; !exists || channel == ``{
+		if channel,exists = mThingy[`channel`].(string); !exists || channel == ``{
 			return nil
 		}
-		id = mThingy[`id`]
-		channel = mThingy[`channel`]
+		id = mThingy[`id`].(string)
+		channel = mThingy[`channel`].(string)
 		default: 
 			return nil
 	}
 
+	var replyText string
 	if isReply{
-		replyText := Sprintf(`%s: %s`, b.SlackMeta.GetUserName(id), text)
+		replyText = fmt.Sprintf(`%s: %s`, b.SlackMeta.GetUserName(id), text)
 	}else{
-		replyText := text
+		replyText = text
 	}
 
 	return b.Send(&Event{

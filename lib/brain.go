@@ -16,21 +16,21 @@ type Brain interface {
 }
 
 // NewStore returns an initialized store
-func (b *Broker) NewBrain() (*Brain, error) {
+func (b *Broker) newBrain() (Brain, error) {
 	var brain Brain
 	var err error
 	if b.Config.RedisURL != ``{
 		Logger.Debug(`Brain:: setting up a Redis Brain to: `, b.Config.RedisURL)
 		if brain, err =	newRedisBrain(b); err != nil{
-			return &brain, err
+			return brain, err
 		}
 	}else{
 		Logger.Debug(`Brain:: setting up an in-memory Brain`)
 		if brain, err =	newRAMBrain(b); err != nil{
-			return &brain, err
+			return brain, err
 		}
 	}
-	return &brain, nil
+	return brain, nil
 }
 
 //rambrain storage implementation

@@ -2,32 +2,22 @@ package modules
 
 import(
 	lazlo "github.com/djosephsen/lazlo/lib"
+	"math/rand"
 	"time"
-	"rand"
 )
 
-Ping := &lazlo.Module{
+var Syn = &lazlo.Module{
 	Name:	`Ping`,
-	Usage: "`%BOTNAME% (ping|syn)` : Test that the bot is currently running",
-	Run:	 run,
+	Usage: `"%BOTNAME% (ping|syn)" : Test that the bot is currently running`,
 	SyncChan: make(chan bool),
+	Run:	 func (b *lazlo.Broker){
+		cb := b.MessageCallback(`(?i)(ping|syn)`, true)
+		pm := <- cb.Chan 
+		pm.Event.Reply(randReply())
+	},
 }
 
-func run(b *lazlo.Broker){
-	cb := b.MessageCallback(`(?i)(ping|syn)`, true)
-	stop := false
-	for !stop{
-		select{
-		case event := <- cb.Chan	
-			event.Reply(randReply())
-		case stop = <- cb.SyncChan
-			stop = true
-		}
-	}
-	b.SyncChan <- true
-}
-
-func randReply string(
+func randReply() string{
 	now:=time.Now()
 	rand.Seed(int64(now.Unix()))
 	replies := []string{

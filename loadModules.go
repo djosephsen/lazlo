@@ -5,8 +5,8 @@ import(
 	"github.com/djosephsen/lazlo/modules"
 )
 
-func initModules(b *lib.Broker) error{
-	b.Register(modules.Ping)
+func initModules(b *lazlo.Broker) error{
+	b.Register(modules.Syn)
 	b.Register(modules.RTMPing)
 	return nil
 }

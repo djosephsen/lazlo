@@ -19,7 +19,7 @@ type ApiRequest struct{
 //base function for communicating with the slack api
 func MakeAPIReq(req ApiRequest)(*ApiResponse, error){
 	resp:=new(ApiResponse)
-	req.Values.Set(`token`, req.Bot.Config.Token)
+	req.Values.Set(`token`, req.Broker.Config.Token)
 
 	reply, err := http.PostForm(req.URL, req.Values)
    if err != nil{
@@ -36,7 +36,7 @@ func MakeAPIReq(req ApiRequest)(*ApiResponse, error){
 }
 
 // Go forth and get a websocket for RTM and all the Slack Team Metadata
-func (b *Broker) getMeASocket() error {
+func (b *Broker) getASocket() (*websocket.Conn, *ApiResponse, error) {
    var req = ApiRequest{
       URL: `https://slack.com/api/rtm.start`,
 		Values: make(url.Values),
@@ -44,11 +44,11 @@ func (b *Broker) getMeASocket() error {
    }
    authResp,err := MakeAPIReq(req)
    if err != nil{
-      return err
+      return nil, nil, err
    }
 
    if authResp.URL == ""{
-      return fmt.Errorf("Auth failure")
+      return nil, nil, fmt.Errorf("Auth failure")
    }
    wsURL := strings.Split(authResp.URL, "/")
    wsURL[2] = wsURL[2] + ":443"
@@ -61,13 +61,12 @@ func (b *Broker) getMeASocket() error {
 
    ws, _, err := Dialer.Dial(authResp.URL, header)
    if err != nil{
-      return fmt.Errorf("no dice dialing that websocket: %v", err)
+      return nil, nil, fmt.Errorf("no dice dialing that websocket: %v", err)
    }
 
    //yay we're websocketing
    return ws, authResp, nil
 }
-
 
 // parses sBot.Meta to return a user's Name field given its ID
 func (meta *ApiResponse) GetUserName(id string) string{
@@ -121,7 +120,7 @@ func (meta *ApiResponse) GetChannelByName(name string) *Channel{
 
 // convinience function to reply to a message event
 func (event *Event) Reply(s string) chan map[string]interface{}{
-   replyText:=fmt.Sprintf(`%s: %s`, event.Broker.Meta.GetUserName(event.User), s)
+   replyText:=fmt.Sprintf(`%s: %s`, event.Broker.SlackMeta.GetUserName(event.User), s)
    return event.Broker.Send(&Event{
       Type:    event.Type,
       Channel: event.Channel,

@@ -1,34 +1,43 @@
 package lib
 
 import(
+	"fmt"
+	"time"
 )
 
 type MessageCallback struct{
    ID             string
    Pattern        string
    Respond        bool // if true, only respond if the bot is mentioned by name
-   Chan           chan struct{Message: string, Match: string}
+   Chan           chan PatternMatch
+}
+
+type PatternMatch struct{
+	Event				*Event
+	Match				[]string
 }
 
 type EventCallback struct{
    ID           string
-   Key            string
-   Val            string
-   Chan           chan map[string]interface{}
+   Key          string
+   Val          string
+   Chan         chan map[string]interface{}
 }
+
 type TimerCallback struct{
    ID           string
    Schedule     string
-   Chan         chan time.Time
 	State			 string
 	Next			 time.Time
-}
-type LinkCallback struct{
-   ID           string
-   Chan         map[string]interface{}
+   Chan         chan time.Time
 }
 
-func (b *Broker) RegisterCallback(callback *interface{}) error{
+type LinkCallback struct{
+   ID           string
+   Chan         chan map[string]interface{}
+}
+
+func (b *Broker) RegisterCallback(callback interface{}) error{
 	switch callback.(type){
 		case MessageCallback:
 			m:=callback.(MessageCallback)
@@ -43,60 +52,53 @@ func (b *Broker) RegisterCallback(callback *interface{}) error{
 			l:=callback.(LinkCallback)
 			b.cbIndex[L][l.ID] = &callback
 		default:
-			err:=fmt.Errorf("unknown type in register callback: %T",cbObj.(type))
+			err:=fmt.Errorf("unknown type in register callback: %T",callback)
 			Logger.Error(err)
 			return err
 		}
 return nil
 }
 
-func (b *Broker) MessageCallback(pattern string, method string) (MessageCallback){
-   callback := &messageCallback {
+func (b *Broker) MessageCallback(pattern string, respond bool) *MessageCallback{
+   callback := &MessageCallback {
       ID:         fmt.Sprintf("message:%s",len(b.cbIndex[M])),
       Pattern:    pattern,
-      Method:     method,
-      Chan:       new(chan struct{Message: string, Match: string}),
+      Respond:    respond,
+      Chan:			make(chan PatternMatch),
    }
 
-   if err := RegisterCallback(callback); err != nil{
+   if err := b.RegisterCallback(callback); err != nil{
       Logger.Debug("error registering callback ", callback.ID, ":: ",err)
       return nil
    }
    return callback
 }
 
-func (b *Broker) EventCallback(key string, val string) EventCallback{
+func (b *Broker) EventCallback(key string, val string) *EventCallback{
    callback := &EventCallback{
       ID:         fmt.Sprintf("event:%s",len(b.cbIndex[E])),
       Key:        key,
       Val:        val,
-      Chan:       new(chan map[string]interface{}),
+      Chan:       make(chan map[string]interface{}),
    }
 
-   if err := callback.Start(); err != nil{
-      Logger.Debug("error registering callback ", callback.ID, ":: ",err)
-      return nil
-	}
-
-   if err := RegisterCallback(callback); err != nil{
+   if err := b.RegisterCallback(callback); err != nil{
       Logger.Debug("error registering callback ", callback.ID, ":: ",err)
       return nil
    }
-
    return callback
 }
 
-func (b *Broker) TimerCallback(schedule string) TimerCallback{
+func (b *Broker) TimerCallback(schedule string) *TimerCallback{
    callback := &TimerCallback{
       ID:         fmt.Sprintf("timer:%s",len(b.cbIndex[E])),
       Schedule:   schedule,
-      Chan:       new(chan time.Time)
+      Chan:       make(chan time.Time),
    }
-   if err := RegisterCallback(callback); err != nil{
+   if err := b.RegisterCallback(callback); err != nil{
       Logger.Debug("error registering callback ", callback.ID, ":: ",err)
       return nil
    }
    return callback
 }
 //func (b *Broker) LinkCallback(thingy map[string]interface{}){
-

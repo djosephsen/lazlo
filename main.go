@@ -14,16 +14,19 @@ func main(){
 		lazlo.Logger.Error(err)
 		return
 	}
-	brain := *broker.Brain
-	defer brain.Close()
+	defer broker.Brain.Close()
 
-	//start the read, write and broker threads
+	//start the broker 
 	broker.Start()
 
-	if err := broker.InitModules(); err !=nil{
+	// register the modules
+	if err := initModules(broker); err !=nil{
       lazlo.Logger.Error(err)
 		return
 	}
+
+	//start the Modules
+	broker.StartModules()
 
 	// Loop
 	signal.Notify(broker.SigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
@@ -41,6 +44,5 @@ func main(){
    signal.Stop(broker.SigChan)
 
 	//wait for the write thread to stop (so the shutdown hooks have a chance to run)
-	broker.WriteThread.RunChan <- true
 	<- broker.SyncChan
 }
