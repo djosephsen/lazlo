@@ -9,11 +9,11 @@ import (
 
 // Config struct
 type Config struct {
-   Name        string `env:"key=SLACKER_NAME default=slackerbot"`
-   Token 	   string `env:"key=SLACKER_TOKEN"`
-   LogLevel    string `env:"key=SLACKER_LOG_LEVEL default=info"`
-   RedisURL 	string `env:"key=SLACKER_REDIS_URL"`
-   RedisPW 		string `env:"key=SLACKER_REDIS_PW"`
+   Name        string `env:"key=LAZLO_NAME default=lazlo"`
+   Token 	   string `env:"key=LAZLO_TOKEN"`
+   LogLevel    string `env:"key=LAZLO_LOG_LEVEL default=info"`
+   RedisURL 	string `env:"key=LAZLO_REDIS_URL"`
+   RedisPW 		string `env:"key=LAZLO_REDIS_PW"`
    Port 			string `env:"key=PORT"`
 }
 
@@ -27,6 +27,6 @@ func newLogger() *logging.Logger {
    format := "%25s [%s] %8s: %s\n time,name,levelname,message"
    timeFormat := time.RFC3339
    level := logging.GetLevelValue(`INFO`)
-   logger, _ := logging.WriterLogger("slacker", level, format, timeFormat, os.Stdout, true)
+   logger, _ := logging.WriterLogger("lazlo", level, format, timeFormat, os.Stdout, true)
    return logger
 }

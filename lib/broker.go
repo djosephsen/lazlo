@@ -2,6 +2,7 @@ package lib
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/ccding/go-logging/logging"
    "os"
    "time"
    "encoding/json"
@@ -67,6 +68,8 @@ func NewBroker() (*Broker, error){
 	broker := &Broker{
 		MID:           0,
 		Config:			newConfig(),
+	   Modules:			make(map[string] *Module),
+	   ApiResponses:	make(map[int32]chan map[string]interface{}),
 		cbIndex:			make(map[string]map[string]interface{}),
 		WriteThread:   &WriteThread{
 			Chan:			make(chan Event),
@@ -75,6 +78,14 @@ func NewBroker() (*Broker, error){
 		SigChan:        make(chan os.Signal),
 		SyncChan:       make(chan bool),
 	}
+	//correctly set the log level
+	Logger.SetLevel(logging.GetLevelValue(strings.ToUpper(broker.Config.LogLevel))) 
+
+	broker.cbIndex[M] = make(map[string]interface{})
+	broker.cbIndex[E] = make(map[string]interface{})
+	broker.cbIndex[T] = make(map[string]interface{})
+	broker.cbIndex[L] = make(map[string]interface{})
+	broker.WriteThread.broker = broker
 
 	//connect to slack and establish an RTM websocket
 	socket,meta,err := broker.getASocket()
@@ -99,6 +110,7 @@ func NewBroker() (*Broker, error){
 func (broker *Broker) Start(){
 	go broker.StartHttp()
 	go broker.WriteThread.Start()
+	Logger.Debug(`Broker:: entering read-loop`)
 	for {
 		thingy := make(map[string]interface{})
 		broker.Socket.ReadJSON(&thingy)
@@ -144,7 +156,10 @@ func (b *Broker) NextMID() int32{
 }
 
 func (b *Broker) This(thingy map[string]interface{}){
-   if b.Modules == nil{ return }
+   if b.Modules == nil{ 
+		Logger.Debug(`Broker:: Got a `,thingy[`type`],` , but no modules are loaded!`)
+		return 
+	}
 //run the pre-handeler filters
    if b.ReadFilters != nil{
       for _,filter := range b.ReadFilters{ //run the read filters
@@ -154,6 +169,7 @@ func (b *Broker) This(thingy map[string]interface{}){
    // stop here if a prefilter delted our thingy
    if len(thingy) == 0 { return }
 
+	Logger.Debug(`broker:: got a `, thingy[`type`])
    // if it's an api response send it to whomever is listening for it
    if replyVal, isReply := thingy[`reply_to`]; isReply{
       if replyVal != nil{ // sometimes the api returns: "reply_to":null
@@ -175,18 +191,18 @@ func (b *Broker) This(thingy map[string]interface{}){
 func (b *Broker) Register(things ...interface{}){
    for _,thing := range things{
       switch t := thing.(type) {
-      case Module:
-			m:=thing.(Module)
+      case *Module:
+			m:=thing.(*Module)
          Logger.Debug(`registered Module: `,m.Name)
-         b.Modules[m.Name] = &m
- 		case ReadFilter:
-         r:=thing.(ReadFilter)
+         b.Modules[m.Name] = m
+ 		case *ReadFilter:
+         r:=thing.(*ReadFilter)
          Logger.Debug(`registered Read Filter: `, r.Name)
-         b.ReadFilters=append(b.ReadFilters, &r)
-      case WriteFilter:
-         w:=thing.(WriteFilter)
+         b.ReadFilters=append(b.ReadFilters, r)
+      case *WriteFilter:
+         w:=thing.(*WriteFilter)
          Logger.Debug(`registered Write Filter: `, w.Name)
-         b.WriteFilters=append(b.WriteFilters, &w)
+         b.WriteFilters=append(b.WriteFilters, w)
       default:
          weirdType:=fmt.Sprintf(`%T`,t)
          Logger.Error(`sorry I cant register this handler because I don't know what a `,weirdType, ` is`)
@@ -217,7 +233,7 @@ func (b *Broker) handleMessage(thingy map[string]interface{}){
       message.Broker = b
    	botNamePat := fmt.Sprintf(`^(?:@?%s[:,]?)\s+(?:${1})`, b.Config.Name)
    	for _, cbInterface := range b.cbIndex[M]{
-		callback := cbInterface.(MessageCallback)
+		callback := cbInterface.(*MessageCallback)
       var r *regexp.Regexp
       if callback.Respond{ 
          r = regexp.MustCompile(strings.Replace(botNamePat,"${1}", callback.Pattern, 1))

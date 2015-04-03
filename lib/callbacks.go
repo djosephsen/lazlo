@@ -39,18 +39,18 @@ type LinkCallback struct{
 
 func (b *Broker) RegisterCallback(callback interface{}) error{
 	switch callback.(type){
-		case MessageCallback:
-			m:=callback.(MessageCallback)
-			b.cbIndex[M][m.ID] = &callback
-		case EventCallback:
-			e:=callback.(EventCallback)
-			b.cbIndex[E][e.ID] = &callback
-		case TimerCallback:
-			t:=callback.(TimerCallback)
-			b.cbIndex[T][t.ID] = &callback
-		case LinkCallback:
-			l:=callback.(LinkCallback)
-			b.cbIndex[L][l.ID] = &callback
+		case *MessageCallback:
+			m:=callback.(*MessageCallback)
+			b.cbIndex[M][m.ID] = callback
+		case *EventCallback:
+			e:=callback.(*EventCallback)
+			b.cbIndex[E][e.ID] = callback
+		case *TimerCallback:
+			t:=callback.(*TimerCallback)
+			b.cbIndex[T][t.ID] = callback
+		case *LinkCallback:
+			l:=callback.(*LinkCallback)
+			b.cbIndex[L][l.ID] = callback
 		default:
 			err:=fmt.Errorf("unknown type in register callback: %T",callback)
 			Logger.Error(err)
