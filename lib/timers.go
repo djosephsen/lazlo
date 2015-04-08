@@ -24,6 +24,7 @@ func (t *TimerCallback) Start() error{
 
 // wait for the timer to expire, callback to the module, and reschedule
 func (t *TimerCallback) Run(dur time.Duration){
+	Logger.Debug(`scheduling timer `, t.ID, ` for: `,t.Next)
 	timer := time.NewTimer(dur)
 	alarm := <- timer.C //blocks waiting for the timer
    t.Chan <- alarm //signals the module

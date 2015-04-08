@@ -12,8 +12,10 @@ var Syn = &lazlo.Module{
 	SyncChan: make(chan bool),
 	Run:	 func (b *lazlo.Broker){
 		cb := b.MessageCallback(`(?i)(ping|syn)`, true)
-		pm := <- cb.Chan 
-		pm.Event.Reply(randReply())
+		for {
+			pm := <- cb.Chan 
+			pm.Event.Reply(randReply())
+		}
 	},
 }
 

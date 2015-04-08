@@ -32,11 +32,6 @@ type TimerCallback struct{
    Chan         chan time.Time
 }
 
-type LinkCallback struct{
-   ID           string
-   Chan         chan map[string]interface{}
-}
-
 func (b *Broker) RegisterCallback(callback interface{}) error{
 	switch callback.(type){
 		case *MessageCallback:
@@ -47,6 +42,7 @@ func (b *Broker) RegisterCallback(callback interface{}) error{
 			b.cbIndex[E][e.ID] = callback
 		case *TimerCallback:
 			t:=callback.(*TimerCallback)
+			t.Start()
 			b.cbIndex[T][t.ID] = callback
 		case *LinkCallback:
 			l:=callback.(*LinkCallback)
@@ -61,7 +57,7 @@ return nil
 
 func (b *Broker) MessageCallback(pattern string, respond bool) *MessageCallback{
    callback := &MessageCallback {
-      ID:         fmt.Sprintf("message:%s",len(b.cbIndex[M])),
+      ID:         fmt.Sprintf("message:%d",len(b.cbIndex[M])),
       Pattern:    pattern,
       Respond:    respond,
       Chan:			make(chan PatternMatch),
@@ -76,7 +72,7 @@ func (b *Broker) MessageCallback(pattern string, respond bool) *MessageCallback{
 
 func (b *Broker) EventCallback(key string, val string) *EventCallback{
    callback := &EventCallback{
-      ID:         fmt.Sprintf("event:%s",len(b.cbIndex[E])),
+      ID:         fmt.Sprintf("event:%d",len(b.cbIndex[E])),
       Key:        key,
       Val:        val,
       Chan:       make(chan map[string]interface{}),
@@ -91,7 +87,7 @@ func (b *Broker) EventCallback(key string, val string) *EventCallback{
 
 func (b *Broker) TimerCallback(schedule string) *TimerCallback{
    callback := &TimerCallback{
-      ID:         fmt.Sprintf("timer:%s",len(b.cbIndex[E])),
+      ID:         fmt.Sprintf("timer:%d",len(b.cbIndex[E])),
       Schedule:   schedule,
       Chan:       make(chan time.Time),
    }
@@ -101,4 +97,5 @@ func (b *Broker) TimerCallback(schedule string) *TimerCallback{
    }
    return callback
 }
-//func (b *Broker) LinkCallback(thingy map[string]interface{}){
+
+// LinkCallback() def is in httpserver.go because it includes net/http (sorry)
