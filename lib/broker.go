@@ -9,6 +9,7 @@ import (
    "fmt"
    "strings"
    "regexp"
+	"bytes"
 )
 
 var Logger = newLogger()
@@ -131,21 +132,41 @@ func (w *WriteThread) Start(){
       select{
       case e := <-w.Chan:
          Logger.Debug(`WriteThread:: Outbound `,e.Type,` channel: `,e.Channel,`. text: `,e.Text)
-         if ejson, _ := json.Marshal(e); len(ejson) >= 16000 {
+			ejson := stupidUTFHack(e)
+         if len(ejson) >= 16000 {
             e = Event{
-            ID: e.ID,
-            Type: e.Type,
-            Channel: e.Channel,
-            Text: fmt.Sprintf("ERROR! Response too large. %v Bytes!", len(ejson)),
+            	ID: e.ID,
+            	Type: e.Type,
+            	Channel: e.Channel,
+            	Text: fmt.Sprintf("ERROR! Response too large. %v Bytes!", len(ejson)),
             }
-         }
-            w.broker.Socket.WriteJSON(e)
-            time.Sleep(time.Second * 1)
+				ejson = stupidUTFHack(e)
+			}
+      	if matches,_ := regexp.MatchString(`<[hH#@].+>`, string(ejson)); matches{
+				Logger.Debug(`message formtting detected; sending via api`)
+				e.Broker=w.broker
+				apiPostMessage(e)
+			}else{
+         	w.broker.Socket.WriteMessage(1, ejson)
+			}
+			Logger.Debug(string(ejson))
+         time.Sleep(time.Second * 1)
       case stop = <- w.SyncChan:
          stop = true
          }
       }
    w.broker.SyncChan <- true
+}
+
+func stupidUTFHack(thingy interface{}) []byte {
+	//This stupid hack un-does the utf-escaping performed  by json.Marshal()
+	//because although Slack correctly parses utf, it doesn't recognize
+	//utf-escaped markup like <http://myurl.com|myurl> 
+	jThingy,_ := json.Marshal(thingy) 
+	jThingy = bytes.Replace(jThingy, []byte("\\u003c"), []byte("<"), -1) 
+	jThingy = bytes.Replace(jThingy, []byte("\\u003e"), []byte(">"), -1) 
+	jThingy = bytes.Replace(jThingy, []byte("\\u0026"), []byte("&"), -1) 
+	return jThingy 
 }
 
  //probably need to make this thread-safe (for now only the write thread uses it)
@@ -211,8 +232,8 @@ func (b *Broker) Register(things ...interface{}){
 }
 
 func (b *Broker) handleApiReply(thingy map[string]interface{}){
-   chanID:=int32(thingy[`reply_to`].(float64))
-   Logger.Debug(`Broker:: reply message, to: `, thingy[`reply_to`])
+   chanID := int32(thingy[`reply_to`].(float64))
+   Logger.Debug(`Broker:: caught a reply to: `, chanID)
    if callBackChannel, exists := b.ApiResponses[chanID]; exists{
       callBackChannel <- thingy
 		//dont leak channels

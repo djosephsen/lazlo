@@ -3,10 +3,12 @@ package lib
 import(
 	"fmt"
 	"github.com/gorilla/websocket"
+	"github.com/fatih/structs"
 	"net/http"
 	"net/url"
 	"encoding/json"
 	"strings"
+	"strconv"
 )
 
 
@@ -135,4 +137,29 @@ func (event *Event) Respond(s string) chan map[string]interface{}{
       Channel: event.Channel,
       Text:    s,
       })
+}
+
+// this is a confusing hack that I'm using because slack's RTM websocket
+// doesn't seem to support their own markup syntax. So anything that looks
+// like it has markup in it is sent into this function by the write thread
+// instead of into the websocket where it belongs. 
+func apiPostMessage(e Event) {
+   var req = ApiRequest{
+      URL: `https://slack.com/api/chat.postMessage`,
+      Values: make(url.Values),
+		Broker: e.Broker,
+   }
+   req.Values.Set(`channel`, e.Channel)
+   req.Values.Set(`text`, e.Text)
+   req.Values.Set(`id`, strconv.Itoa(int(e.ID)))
+   req.Values.Set(`username`, e.Broker.Config.Name)
+   req.Values.Set(`pretty`, `1`)
+   authResp,_ := MakeAPIReq(req)
+	s:=structs.New(authResp) // convert this to a map[string]interface{} why not? hax. 
+	resp := s.Map()
+	if replyVal,isReply:= resp[`reply_to`]; isReply{
+		if replyVal != nil{
+			e.Broker.handleApiReply(resp)
+		}
+	}
 }
