@@ -108,6 +108,11 @@ func NewBroker() (*Broker, error){
 	return broker,nil
 }
 
+func (broker *Broker) Stop(){
+// make sure the write thread finishes before we stop
+	broker.WriteThread.SyncChan <-true
+}
+	
 func (broker *Broker) Start(){
 	go broker.StartHttp()
 	go broker.WriteThread.Start()
@@ -155,6 +160,7 @@ func (w *WriteThread) Start(){
          stop = true
          }
       }
+	//signal main that we're done
    w.broker.SyncChan <- true
 }
 
@@ -210,6 +216,7 @@ func (b *Broker) This(thingy map[string]interface{}){
 }
 
 func (b *Broker) Register(things ...interface{}){
+// this is where we register user-provided plug-in code of various description
    for _,thing := range things{
       switch t := thing.(type) {
       case *Module:

@@ -8,7 +8,6 @@ import(
 var LinkTest = &lazlo.Module{
 	Name:	`LinkTest`,
 	Usage: `"%BOTNAME% linkme foo" : creates a clickable link at servername/foo`,
-	SyncChan: make(chan bool),
 	Run:	 func (b *lazlo.Broker){
 		clickChan := make(chan string)
 		optionChan := make(chan string)

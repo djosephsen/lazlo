@@ -152,7 +152,7 @@ func apiPostMessage(e Event) {
    req.Values.Set(`channel`, e.Channel)
    req.Values.Set(`text`, e.Text)
    req.Values.Set(`id`, strconv.Itoa(int(e.ID)))
-   req.Values.Set(`username`, e.Broker.Config.Name)
+   req.Values.Set(`as_user`, e.Broker.Config.Name)
    req.Values.Set(`pretty`, `1`)
    authResp,_ := MakeAPIReq(req)
 	s:=structs.New(authResp) // convert this to a map[string]interface{} why not? hax. 

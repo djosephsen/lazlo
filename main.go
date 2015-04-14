@@ -43,6 +43,7 @@ func main(){
    }
    // Stop listening for new signals
    signal.Stop(broker.SigChan)
+	broker.Stop()
 
 	//wait for the write thread to stop (so the shutdown hooks have a chance to run)
 	<- broker.SyncChan
