@@ -8,7 +8,6 @@ var RTMPing = &lazlo.Module{
 	Name:	`RTMPing`,
 	Usage: `Automatially sends an RTM Ping to SlackHQ every 20 seconds`,
 	Run:	 rtmrun,
-	SyncChan: make(chan bool),
 }
 
 func rtmrun(b *lazlo.Broker){

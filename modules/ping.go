@@ -9,7 +9,6 @@ import(
 var Syn = &lazlo.Module{
 	Name:	`Ping`,
 	Usage: `"%BOTNAME% (ping|syn)" : Test that the bot is currently running`,
-	SyncChan: make(chan bool),
 	Run:	 func (b *lazlo.Broker){
 		cb := b.MessageCallback(`(?i)(ping|syn)`, true)
 		for {

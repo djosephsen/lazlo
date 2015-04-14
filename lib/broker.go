@@ -41,8 +41,6 @@ type Module struct{
 	Name				string
 	Usage				string
 	Run				func(*Broker)
-	SigChan			chan os.Signal
-	SyncChan			chan bool
 }
 
 type WriteThread struct{

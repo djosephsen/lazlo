@@ -20,9 +20,14 @@ type ApiRequest struct{
 
 //base function for communicating with the slack api
 func MakeAPIReq(req ApiRequest)(*ApiResponse, error){
-	resp:=new(ApiResponse)
-	req.Values.Set(`token`, req.Broker.Config.Token)
+	if req.Values.Get(`token`) == ``{
+		req.Values.Set(`token`, req.Broker.Config.Token)
+	}
+	if req.Values.Get(`as_user`) == ``{
+		req.Values.Set(`as_user`, req.Broker.Config.Name)
+	}
 
+	resp:=new(ApiResponse)
 	reply, err := http.PostForm(req.URL, req.Values)
    if err != nil{
       return resp, err
