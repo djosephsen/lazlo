@@ -1,20 +1,20 @@
 # Lazlo
 ## An event-driven chatops framework for Slack in Go. 
 
-The prototypical IRC bot responds to text. Generally, the pattern is you give
-it a regex to match on, and some code to run when someone says something in
-chat that matches your regular expression. Your plugin runs when a pattern
+The prototypical IRC bot responds to text. Generally, the pattern is you
+provide a regex to match on, and some code to run when someone says something
+in chat that matches your regular expression. Your plugin runs when a pattern
 match happens, and then returns.
 
 Your Lazlo module, by comparison is started at runtime and stays resident in
-memory. Outwardly, Lazlo *acts* like a bot, but internally it works as an event
-broker.  Your module registers for callbacks -- it can tell Lazlo what sorts of
-events it finds interesting. For each callback you register with Lazlo, it
-hands you back a *channel*. You can block on the channel, waiting for something
-to happen, or you can register more callbacks (as many as you want), and select
-between them in a loop. Throughout its lifetime, your Module can de-register
-callbacks it doesn't need anymore, and ask for new ones as circumstances
-demand.
+memory. Outwardly, Lazlo *acts* like a bot, but internally Lazlo works as an
+event broker.  Your module registers for callbacks -- you can tell Lazlo what
+sorts of events your module finds interesting. For each callback your module
+registers, Lazlo will hand back a *channel*. Your module can block on the
+channel, waiting for something to happen, or it can register more callbacks (as
+many as you have memory for), and select between them in a loop. Throughout its
+lifetime, your Module can de-register the callbacks it doesn't need anymore, and
+ask for new ones as circumstances demand.
 
 Currently there are three different kinds of callbacks you can ask for.
 
@@ -41,4 +41,3 @@ That's an oversimplified example, but I think you probably get the idea. Check
 out the Modules directory for working examples that use the various callbacks. 
 
 [get started](docs/install.md)
-
