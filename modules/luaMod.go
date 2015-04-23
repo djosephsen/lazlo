@@ -3,8 +3,10 @@ package modules
 import(
 	lazlo "github.com/djosephsen/lazlo/lib"
 	lua "github.com/yuin/gopher-lua"
-	"math/rand"
+	luar "github.com/layeh/gopher-luar"
 	"time"
+	"reflect"
+	"net/http"
 )
 
 //luaMod implements a lua-parsing plugin for Lazlo.
@@ -12,25 +14,52 @@ import(
 //preferable in some contexts (no recompiles for changes etc..).
 var LuaMod = &lazlo.Module{
 	Name:	`LuaMod`, 
-	Usage: `%HIDDEN% this module implements lua scripting of lazlo`
+	Usage: `%HIDDEN% this module implements lua scripting of lazlo`,
 	Run:	 luaMain, 
 }
 
-//LuaStates is a lookup table for each of the lua scripts
-var LuaStates []*lua.LState
-//CBtable is a lookup table for callbacks we register with lazlo
-var CBTable []
-//Cases is a lookup table that allows us to select on a dynamic number of callback Channels
-var Cases []SelectCase
+//Each LuaScript represents a single lua script/state machine
+type LuaScript struct{
+	Robot			*Robot
+	State			*lua.LState
+}
+
+//A CBMap maps a specific callback Case to it's respective lua function and
+//parent lua script
+type CBMap struct{
+	Func			lua.LFunction
+	Callback		*reflect.Value
+	Script		*LuaScript
+}
+
+type Robot struct{
+	ID		string
+}
+func (r *Robot) GetID() string{
+	return r.ID
+}
+
+//LuaScripts allows us to Retrieve lua.LState by LuaScript.Robot.ID
+var LuaScripts map[string]LuaScript
+
+//CBtable allows us to Retrieve lua.LState by callback case index
+var CBTable []CBMap
+
+//Cases is used by reflect.Select to deliver events from lazlo
+var Cases []reflect.SelectCase
+
+//Broker is a global pointer back to our lazlo broker
+var broker *lazlo.Broker
 
 //luaMain reads in lua files, registers their callbacks with lazlo
 //and brokers back events that occur in the chatroom
 func luaMain (b *lazlo.Broker){
+	 broker=b
     L := lua.NewState()
     defer L.Close()
 
 	 //register functions here
-    L.SetGlobal("double", L.NewFunction(Double)) /* Original lua_setglobal uses stack... */
+    L.SetGlobal("hear", luar.New(L,Hear)) /* Original lua_setglobal uses stack... */
 
 	//block waiting on events from the broker
 	for{
@@ -61,8 +90,8 @@ func handle(index int, val interface{}){
 
 //handleMessageCB brokers messages back to the lua script that asked for them
 func handleMessageCB(index int, message lazlo.PatternMatch){
-	l:=LuaStates[index]
-	lmsg:=l.NewTable()
+	l := LuaStates[index]
+	lmsg := l.NewTable()
 	return
 }
 
@@ -82,13 +111,23 @@ func handleLinkCB(index int, resp *http.Response())
 }
 
 //functions exported to the lua runtime below here
-
-func Hear(b* lazlo.Broker, L *lua.LState){
-    pat := L.ToString(-1)             /* get argument */
-	 cb := b.MessageCallback(pat,1)
-    return 1                     /* number of results */
+func (r *Robot)Hear(pat string, lfunc lua.LFunction){
+	// it's important that the index is the same in both cbtable and cases
+	if len(CBTable) != len(Cases){ panic(`cbtable != cases`) }
+	cb:=lazlo.MessageCallback(pat,1)
+	cbEntry:=CBMap{
+		Func:			lfunc,
+		Callback:	reflect.ValueOf(cb),
+		Script		LuaScripts[r.ID],
+	}
+	caseEntry:=reflect.Case{
+        Dir:		SelectRecv,
+        Chan:		reflect.ValueOf(cb.Chan),
+	}
+	append(CBTable, cbEntry)
+	append(Cases, caseEntry)
 }
 
-func Respond(L *lua.LState) int {
+func (r *Robot)Respond(L *lua.LState) int {
     pat := L.ToString(-1)             /* get argument */
 
