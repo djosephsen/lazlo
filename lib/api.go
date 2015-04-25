@@ -11,14 +11,15 @@ import(
 	"strconv"
 )
 
-
+//ApiRequest contains everything we need to make.. well an api request
 type ApiRequest struct{
 	URL		string
 	Values	url.Values
 	Broker	*Broker
 }
 
-//base function for communicating with the slack api
+//MakeAPIReq takes an ApiRequest, adds auth if necessary and POSTs it to
+//the slack web-api.
 func MakeAPIReq(req ApiRequest)(*ApiResponse, error){
 	if req.Values.Get(`token`) == ``{
 		req.Values.Set(`token`, req.Broker.Config.Token)
@@ -42,7 +43,8 @@ func MakeAPIReq(req ApiRequest)(*ApiResponse, error){
 	return resp, nil
 }
 
-// Go forth and get a websocket for RTM and all the Slack Team Metadata
+// getASocket calls MakeApiRequest() to get a websocket for the slack RTM
+// interface. 
 func (b *Broker) getASocket() (*websocket.Conn, *ApiResponse, error) {
    var req = ApiRequest{
       URL: `https://slack.com/api/rtm.start`,
@@ -75,7 +77,8 @@ func (b *Broker) getASocket() (*websocket.Conn, *ApiResponse, error) {
    return ws, authResp, nil
 }
 
-// parses sBot.Meta to return a user's Name field given its ID
+// GetUserName is a convience function to return a user's Name field 
+// given its ID.
 func (meta *ApiResponse) GetUserName(id string) string{
    for _,user := range meta.Users{
       if user.ID == id{
@@ -85,7 +88,8 @@ func (meta *ApiResponse) GetUserName(id string) string{
    return ``
 }
 
-// parses sBot.Meta to return a pointer to a user object given its ID
+// GetUser is a convienence function to return a pointer to a user object
+// given its ID.
 func (meta *ApiResponse) GetUser(id string) *User{
    for _,user := range meta.Users{
       if user.ID == id{
@@ -95,7 +99,8 @@ func (meta *ApiResponse) GetUser(id string) *User{
    return nil
 }
 
-// parses sBot.Meta to return a pointer to a user object given its Name
+// GetUserByName is a convience function to return a pointer to a user 
+// object given its Name
 func (meta *ApiResponse) GetUserByName(name string) *User{
    for _,user := range meta.Users{
       if user.Name == name{
@@ -105,7 +110,8 @@ func (meta *ApiResponse) GetUserByName(name string) *User{
    return nil
 }
 
-// parses sBot.Meta to return a pointer to a channel object given its ID
+// GetChannel is a convienence function to fetch a pointer to a channel 
+// object given its ID
 func (meta *ApiResponse) GetChannel(id string) *Channel{
    for _,channel := range meta.Channels{
       if channel.ID == id{
@@ -115,7 +121,8 @@ func (meta *ApiResponse) GetChannel(id string) *Channel{
    return nil
 }
 
-// parses sBot.Meta to return a pointer to a channel object given its Name
+// GetChannel is a convienence function to fetch a pointer to a channel 
+// object given its Name
 func (meta *ApiResponse) GetChannelByName(name string) *Channel{
    for _,channel := range meta.Channels{
       if channel.Name == name{
@@ -125,7 +132,7 @@ func (meta *ApiResponse) GetChannelByName(name string) *Channel{
    return nil
 }
 
-// convinience function to reply to a message event
+// Reply is a convienence function to REPLY to a given event object
 func (event *Event) Reply(s string) chan map[string]interface{}{
    replyText:=fmt.Sprintf(`%s: %s`, event.Broker.SlackMeta.GetUserName(event.User), s)
    return event.Broker.Send(&Event{
@@ -135,7 +142,7 @@ func (event *Event) Reply(s string) chan map[string]interface{}{
       })
 }
 
-// convinience function to respond to a message event
+// Respond is a convienence function to RESPOND to a given event object
 func (event *Event) Respond(s string) chan map[string]interface{}{
    return event.Broker.Send(&Event{
       Type:    event.Type,

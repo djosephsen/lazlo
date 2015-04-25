@@ -12,14 +12,16 @@ import (
 	"bytes"
 )
 
+// Logger is a global reference to our logging object
 var Logger = newLogger()
 
-// Types of Callback
+// These contstats define the four types of callbacks that lazlo can hand you
 const M = "messages"
 const E = "events"
 const T = "timers"
 const L = "links"
 
+// Broker is the all-knowing repository of references
 type Broker struct {
 	SlackMeta		*ApiResponse
 	Config			*Config
@@ -37,32 +39,39 @@ type Broker struct {
 	ThreadCount		int32
 }
 
+// The Module type represents a user-defined plug-in. Build one of these
+// and add it to loadModules.go for Lazlo to run your thingy on startup
 type Module struct{
 	Name				string
 	Usage				string
 	Run				func(*Broker)
 }
 
+// The WriteThread serielizes and sends messages to the slack RTM interface 
 type WriteThread struct{
 	broker			*Broker
 	Chan           chan Event
 	SyncChan       chan bool
 }
 
+// ReadFilter is a yet-to-be-implemented hook run on all inbound  
+// events from slack before the broker gets a hold of them
 type ReadFilter struct{
 	Name				string
 	Usage				string
 	Run      		func(thingy map[string]interface{}) map[string]interface{}
 }
 
+// WriteFilter is a yet-to-be-implemented hook run on all outbound
+// events from slack before the broker gets a hold of them
 type WriteFilter struct{
 	Name				string
 	Usage				string
 	Run      		func(e *Event)
 }		   
 
+// NewBroker instantiates a new broker
 func NewBroker() (*Broker, error){
-//return a Broker instance
 
 	broker := &Broker{
 		MID:           0,
@@ -106,11 +115,13 @@ func NewBroker() (*Broker, error){
 	return broker,nil
 }
 
+// Stop gracefully stops lazlo
 func (broker *Broker) Stop(){
 // make sure the write thread finishes before we stop
 	broker.WriteThread.SyncChan <-true
 }
-	
+
+// It's called Start(), I mean srsly. 
 func (broker *Broker) Start(){
 	go broker.StartHttp()
 	go broker.WriteThread.Start()
@@ -122,12 +133,14 @@ func (broker *Broker) Start(){
 	}
 }
 
+// StartModules launches each user-provided plugin registered in loadMOdules.go
 func (b *Broker) StartModules(){
 	for _,module := range b.Modules{
 		go module.Run(b)
 	}
 }
 
+// WriteThread.Start starts the writethread
 func (w *WriteThread) Start(){
    Logger.Debug(`Write-Thread Started`)
    stop := false
@@ -162,10 +175,11 @@ func (w *WriteThread) Start(){
    w.broker.SyncChan <- true
 }
 
+//This stupid hack un-does the utf-escaping performed  by json.Marshal()
+//because although Slack correctly parses utf, it doesn't recognize
+//utf-escaped markup like <http://myurl.com|myurl> 
+// UPDATE: I can remove this Once I re-figure-out out how the hell it works
 func stupidUTFHack(thingy interface{}) []byte {
-	//This stupid hack un-does the utf-escaping performed  by json.Marshal()
-	//because although Slack correctly parses utf, it doesn't recognize
-	//utf-escaped markup like <http://myurl.com|myurl> 
 	jThingy,_ := json.Marshal(thingy) 
 	jThingy = bytes.Replace(jThingy, []byte("\\u003c"), []byte("<"), -1) 
 	jThingy = bytes.Replace(jThingy, []byte("\\u003e"), []byte(">"), -1) 
@@ -173,8 +187,10 @@ func stupidUTFHack(thingy interface{}) []byte {
 	return jThingy 
 }
 
- //probably need to make this thread-safe (for now only the write thread uses it)
+//NextMID() ensures our outbound messages have a unique ID number
+// (a requirement of the slack rtm api)
 func (b *Broker) NextMID() int32{
+//probably need to make this thread-safe (for now only the write thread uses it)
    b.MID += 1
    Logger.Debug(`incrementing MID to `, b.MID)
    return b.MID

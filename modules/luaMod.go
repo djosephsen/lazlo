@@ -58,18 +58,22 @@ func luaMain (b *lazlo.Broker){
 	 for <some array of lua files to read>{
 
 		//make a new script entry
-		thisScript := &luaScript{
+		script := &luaScript{
 			Robot:	&Robot{
 				ID:	len(LuaScripts),
 			},
 			State:	lua.NewState(),
 		}
-    	defer thisScript.State.Close()
+    	defer script.State.Close()
 
       // register hear and respond
-    	L.SetGlobal("robot", luar.New(thisScript.State,thisScript.Robot))
+    	script..SetGlobal("robot", luar.New(script.State,script.Robot))
+		LuaScripts[script.Robot.ID]=script
 
-		LuaScripts[thisScript.Robot.ID]=thisScript
+		// the lua script will register callbacks to the Cases
+		if err := script.State.DoFile(file); err != nil {
+			panic(err)
+		}
 
 	//block waiting on events from the broker
 	for{
@@ -79,7 +83,7 @@ func luaMain (b *lazlo.Broker){
     L.Push(lua.LNumber(lv * 2)) /* push result */
 }
 
-//handle takes takes the index and value of an event from lazlo, 
+//handle takes the index and value of an event from lazlo, 
 //typifies the value and calls the right function to push the data back
 //to whatever lua script asked for it.
 func handle(index int, val interface{}){
@@ -100,9 +104,16 @@ func handle(index int, val interface{}){
 
 //handleMessageCB brokers messages back to the lua script that asked for them
 func handleMessageCB(index int, message lazlo.PatternMatch){
-	l := LuaStates[index]
-	lmsg := l.NewTable()
-	return
+	l := CBTable[index].Script.State
+	lmsg := luar.New(message)
+
+	if err := l.CallByParam(lua.P{
+    Fn: CBTable[index].Func,
+    NRet: 0,
+    Protect: true,
+    }, lmsg ); err != nil {
+    panic(err)
+	}
 }
 
 //handleTimerCB brokers timer alarms back to the lua script that asked for them
@@ -136,16 +147,21 @@ func newMsgCallback(pat string, lfunc lua.LFunction, isResponse bool){
 	}
 	append(CBTable, cbEntry)
 	append(Cases, caseEntry)
+}
 
 //functions exported to the lua runtime below here
 
-//lua function to overhear and respond to messages
+//lua function to overhear a message
 func (r *Robot)Hear(pat string, lfunc lua.LFunction){
 	newMesgCallback(pat, lfunc, false)
 }
 
-//lua function to respond to messages addressed to the bot
+//lua function to process a command 
 func (r *Robot)Respond(pat string, lfunc lua.LFunction){
 	newMesgCallback(pat,lfunc,true)
 }
 
+//lua function to reply to a message passed to a lua-side callback
+func (pm *lazlo.PatternMatch)Reply(words string){
+	pm.Event.Reply(words)
+}
