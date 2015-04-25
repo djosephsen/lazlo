@@ -11,7 +11,7 @@ import(
 
 //luaMod implements a lua-parsing plugin for Lazlo.
 //this enables lazlo to be scripted via lua instead of GO, which is 
-//preferable in some contexts (no recompiles for changes etc..).
+//preferable in some contexts (simpler(?), no recompiles for changes etc..).
 var LuaMod = &lazlo.Module{
 	Name:	`LuaMod`, 
 	Usage: `%HIDDEN% this module implements lua scripting of lazlo`,
@@ -33,14 +33,14 @@ type CBMap struct{
 }
 
 type Robot struct{
-	ID		string
+	ID		int
 }
-func (r *Robot) GetID() string{
+func (r *Robot) GetID() int{
 	return r.ID
 }
 
 //LuaScripts allows us to Retrieve lua.LState by LuaScript.Robot.ID
-var LuaScripts map[string]LuaScript
+var LuaScripts []LuaScript
 
 //CBtable allows us to Retrieve lua.LState by callback case index
 var CBTable []CBMap
@@ -51,15 +51,25 @@ var Cases []reflect.SelectCase
 //Broker is a global pointer back to our lazlo broker
 var broker *lazlo.Broker
 
-//luaMain reads in lua files, registers their callbacks with lazlo
-//and brokers back events that occur in the chatroom
+//luaMain creates a new lua state for each file in ./lua
+//and hands them the globals they need to interact with lazlo
 func luaMain (b *lazlo.Broker){
 	 broker=b
-    L := lua.NewState()
-    defer L.Close()
+	 for <some array of lua files to read>{
 
-	 //register functions here
-    L.SetGlobal("hear", luar.New(L,Hear)) /* Original lua_setglobal uses stack... */
+		//make a new script entry
+		thisScript := &luaScript{
+			Robot:	&Robot{
+				ID:	len(LuaScripts),
+			},
+			State:	lua.NewState(),
+		}
+    	defer thisScript.State.Close()
+
+      // register hear and respond
+    	L.SetGlobal("robot", luar.New(thisScript.State,thisScript.Robot))
+
+		LuaScripts[thisScript.Robot.ID]=thisScript
 
 	//block waiting on events from the broker
 	for{
@@ -110,11 +120,11 @@ func handleLinkCB(index int, resp *http.Response())
 	return
 }
 
-//functions exported to the lua runtime below here
-func (r *Robot)Hear(pat string, lfunc lua.LFunction){
-	// it's important that the index is the same in both cbtable and cases
+//creates a new message callback from robot.hear/respond
+func newMsgCallback(pat string, lfunc lua.LFunction, isResponse bool){
+	// cbtable and cases indexes have to match 
 	if len(CBTable) != len(Cases){ panic(`cbtable != cases`) }
-	cb:=lazlo.MessageCallback(pat,1)
+	cb:=lazlo.MessageCallback(pat,isResponse)
 	cbEntry:=CBMap{
 		Func:			lfunc,
 		Callback:	reflect.ValueOf(cb),
@@ -126,8 +136,16 @@ func (r *Robot)Hear(pat string, lfunc lua.LFunction){
 	}
 	append(CBTable, cbEntry)
 	append(Cases, caseEntry)
+
+//functions exported to the lua runtime below here
+
+//lua function to overhear and respond to messages
+func (r *Robot)Hear(pat string, lfunc lua.LFunction){
+	newMesgCallback(pat, lfunc, false)
 }
 
-func (r *Robot)Respond(L *lua.LState) int {
-    pat := L.ToString(-1)             /* get argument */
+//lua function to respond to messages addressed to the bot
+func (r *Robot)Respond(pat string, lfunc lua.LFunction){
+	newMesgCallback(pat,lfunc,true)
+}
 
