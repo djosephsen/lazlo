@@ -7,6 +7,8 @@ import(
 	"time"
 	"reflect"
 	"net/http"
+	"fmt"
+	"os"
 )
 
 //luaMod implements a lua-parsing plugin for Lazlo.
@@ -24,11 +26,14 @@ type LuaScript struct{
 	State			*lua.LState
 }
 
+//Keep a local version of lazlo.Patternmatch so we can add methods to it
+type LazloPatternMatch lazlo.PatternMatch
+
 //A CBMap maps a specific callback Case to it's respective lua function and
 //parent lua script
 type CBMap struct{
-	Func			lua.LFunction
-	Callback		*reflect.Value
+	Func			lua.LValue
+	Callback		reflect.Value
 	Script		*LuaScript
 }
 
@@ -55,10 +60,21 @@ var broker *lazlo.Broker
 //and hands them the globals they need to interact with lazlo
 func luaMain (b *lazlo.Broker){
 	 broker=b
-	 for <some array of lua files to read>{
+	 var luaDir *os.File
+	 luaDirName := "lua"
+	 if luaDirInfo,err := os.Stat(luaDirName); err == nil && luaDirInfo.IsDir(){
+		luaDir,_ = os.Open(luaDirName)
+	}else{
+		lazlo.Logger.Error("Couldn't open the Lua Plugin dir: ",err)
+	}
+	luaFiles,_ := luaDir.Readdir(0)
+	for _,f := range luaFiles{
+		if f.IsDir(){continue}
+
+		file := fmt.Sprintf("%s/%s",luaDirName,f.Name())
 
 		//make a new script entry
-		script := &luaScript{
+		script := LuaScript{
 			Robot:	&Robot{
 				ID:	len(LuaScripts),
 			},
@@ -66,21 +82,21 @@ func luaMain (b *lazlo.Broker){
 		}
     	defer script.State.Close()
 
-      // register hear and respond
-    	script..SetGlobal("robot", luar.New(script.State,script.Robot))
-		LuaScripts[script.Robot.ID]=script
+      // register hear and respond inside this lua state
+    	script.State.SetGlobal("robot", luar.New(script.State, script.Robot))
+    	script.State.SetGlobal("respond", luar.New(script.State, Respond ))
+		LuaScripts = append(LuaScripts,script)
 
 		// the lua script will register callbacks to the Cases
 		if err := script.State.DoFile(file); err != nil {
 			panic(err)
 		}
-
+	}
 	//block waiting on events from the broker
 	for{
 		index, value, _ := reflect.Select(Cases)
 		handle(index, value.Interface())	
 	}
-    L.Push(lua.LNumber(lv * 2)) /* push result */
 }
 
 //handle takes the index and value of an event from lazlo, 
@@ -95,9 +111,9 @@ func handle(index int, val interface{}){
 	case map[string]interface{}:
 		handleEventCB(index, val.(map[string]interface{}))	
 	case *http.Request:
-		handleLinkCB(index, val.(*http.Request))	
-	default
-		err:=fmt.Sprintf("luaMod handle:: unknown type: %T",val)
+		handleLinkCB(index, val.(*http.Response))	
+	default:
+		err := fmt.Errorf("luaMod handle:: unknown type: %T",val)
 		lazlo.Logger.Error(err)
 	}
 }
@@ -105,19 +121,19 @@ func handle(index int, val interface{}){
 //handleMessageCB brokers messages back to the lua script that asked for them
 func handleMessageCB(index int, message lazlo.PatternMatch){
 	l := CBTable[index].Script.State
-	lmsg := luar.New(message)
+	lmsg := luar.New(l, message)
 
 	if err := l.CallByParam(lua.P{
     Fn: CBTable[index].Func,
     NRet: 0,
-    Protect: true,
+    Protect: false,
     }, lmsg ); err != nil {
     panic(err)
 	}
 }
 
 //handleTimerCB brokers timer alarms back to the lua script that asked for them
-func handleTimerCB(index int, t time.TIME){
+func handleTimerCB(index int, t time.Time){
 	return
 }
 
@@ -127,41 +143,41 @@ func handleEventCB(index int, event map[string]interface{}){
 }
 
 //handleLinkCB brokers http GET requests back to the lua script that asked for them
-func handleLinkCB(index int, resp *http.Response())
+func handleLinkCB(index int, resp *http.Response){
 	return
 }
 
 //creates a new message callback from robot.hear/respond
-func newMsgCallback(pat string, lfunc lua.LFunction, isResponse bool){
+func newMsgCallback(RID int, pat string, lfunc lua.LValue, isResponse bool){
 	// cbtable and cases indexes have to match 
 	if len(CBTable) != len(Cases){ panic(`cbtable != cases`) }
-	cb:=lazlo.MessageCallback(pat,isResponse)
-	cbEntry:=CBMap{
+	cb := broker.MessageCallback(pat,isResponse)
+	cbEntry := CBMap{
 		Func:			lfunc,
 		Callback:	reflect.ValueOf(cb),
-		Script		LuaScripts[r.ID],
+		Script:		&LuaScripts[RID],
 	}
-	caseEntry:=reflect.Case{
-        Dir:		SelectRecv,
+	caseEntry:=reflect.SelectCase{
+        Dir:		reflect.SelectRecv,
         Chan:		reflect.ValueOf(cb.Chan),
 	}
-	append(CBTable, cbEntry)
-	append(Cases, caseEntry)
+	CBTable = append(CBTable, cbEntry)
+	Cases = append(Cases, caseEntry)
 }
 
 //functions exported to the lua runtime below here
 
 //lua function to overhear a message
-func (r *Robot)Hear(pat string, lfunc lua.LFunction){
-	newMesgCallback(pat, lfunc, false)
+func (r Robot)Hear(pat string, lfunc lua.LValue){
+	newMsgCallback(r.ID, pat, lfunc, false)
 }
 
 //lua function to process a command 
-func (r *Robot)Respond(pat string, lfunc lua.LFunction){
-	newMesgCallback(pat,lfunc,true)
+func (r Robot)Respond(pat string, lfunc lua.LValue){
+	newMsgCallback(r.ID, pat, lfunc, true)
 }
 
 //lua function to reply to a message passed to a lua-side callback
-func (pm *lazlo.PatternMatch)Reply(words string){
+func (pm LazloPatternMatch)Reply(words string){
 	pm.Event.Reply(words)
 }

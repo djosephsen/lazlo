@@ -1,5 +1,5 @@
-robot.respond("syn", synfunc)
-
-synfunc(msg)
+synfunc = function (msg)
 	msg.reply("ack")
 end
+
+robot.Respond("syn",synfunc)
