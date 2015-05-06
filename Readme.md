@@ -1,5 +1,5 @@
 # Lazlo
-## An event-driven chatops framework for Slack in Go. 
+## An event-driven, lua-scriptable chatops automation framework for Slack in Go. (phew)
 
 The prototypical IRC bot responds to text. Generally, the pattern is you
 provide a regex to match on, and some code to run when someone says something
@@ -40,4 +40,26 @@ module that:
 That's an oversimplified example, but I think you probably get the idea. Check
 out the Modules directory for working examples that use the various callbacks. 
 
-[get started](docs/install.md)
+## Lua
+Lazlo ships with a module that works as a broker between lazlo and a lua state
+machine. If you actually just want to write simple plugins that respond to
+regex in channel, you can implement these very easily using hubot-like syntax
+[in lua](docs/lua.md)
+
+## Whats next?
+* [get up and running](docs/install.md)
+* [writing awesome event-driven modules in Go](docs/plugins.md)
+* [writing simple, fast modules in lua](docs/lua.md)
+
+## Current Status
+
+Lazlo is basically working and basically documented. All callback types are
+implemented and functional and there are several included modules of varying
+degress of complexity that should help get you started writing your own.
+
+### Todo's in order of when I'll probably get to them:
+
+* De-registering callbacks isn't in yet but should be easy to knock out
+* Lua support is new and only includes support for message callbacks (hear respond and reply). I'd like you to be able to get timers and links via lua as well.
+* More included plugins
+* Leader-elections for HA bots. 
