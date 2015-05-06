@@ -6,7 +6,7 @@
 
 2: Add a new *Bots* integration, give your bot a clever name, and take note of your Token
 
-![integration](docs/screenshots/add_bot_integration.png)
+![integration](screenshots/add_bot_integration.png)
 
 3: 
 ```
@@ -28,11 +28,11 @@ lazlo
 
 Now you can ping Lazlo to make sure he's alive: 
 
-![](docs/screenshots/ping_lazlo.png)
+![](screenshots/ping_lazlo.png)
 
 Lazlo comes with a variety of simple plugins to get you started and give you
 examples to work from, and it's pretty easy to add your own. [Making and
-managing your own plugins](docs/plugins.md) is pretty much why you're here in
+managing your own plugins](plugins.md) is pretty much why you're here in
 the first place after all.
 
 ## Deploy Lazlo to Heroku and be all #legit in 10 minutes
@@ -72,7 +72,7 @@ git push heroku master
 
 At this point you can ping Lazlo to make sure he's alive.
 
-![hi](docs/screenshots/ping_lazlo.png)
+![hi](screenshots/ping_lazlo.png)
 
 ### kind of done mostly
 When you make changes or add plugins in the future, you can push them to heroku with: 
@@ -88,7 +88,7 @@ git push && get push heroku
 (sorry this isn't actually a thing yet)
 
 ## What now?
-Find out [what lazlo can do](docs/included_plugins.md) out of the box
-Get started [adding, removing, and creating plugins](docs/plugins.md)
-Learn more about [configuring](docs/configuration.md) Lazlo (there's not much to it)
+Find out [what lazlo can do](included_plugins.md) out of the box
+Get started [adding, removing, and creating plugins](plugins.md)
+Learn more about [configuring](configuration.md) Lazlo (there's not much to it)
 
