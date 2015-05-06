@@ -27,7 +27,7 @@ type LuaScript struct{
 }
 
 //Keep a local version of lazlo.Patternmatch so we can add methods to it
-type LazloPatternMatch lazlo.PatternMatch
+type LocalPatternMatch lazlo.PatternMatch
 
 //A CBMap maps a specific callback Case to it's respective lua function and
 //parent lua script
@@ -84,6 +84,8 @@ func luaMain (b *lazlo.Broker){
 
       // register hear and respond inside this lua state
     	script.State.SetGlobal("robot", luar.New(script.State, script.Robot))
+    	//script.State.SetGlobal("respond", luar.New(script.State, Respond))
+    	//script.State.SetGlobal("hear", luar.New(script.State, Hear))
 		LuaScripts = append(LuaScripts,script)
 
 		// the lua script will register callbacks to the Cases
@@ -98,13 +100,23 @@ func luaMain (b *lazlo.Broker){
 	}
 }
 
+//pmTranslate makes a localized version of patternmatch so we can export it to lua
+//with a few additional methods. 
+func pmTranslate(in lazlo.PatternMatch) LocalPatternMatch{
+	return LocalPatternMatch{
+		Event: in.Event,
+		Match: in.Match,
+	}
+}
+	
+
 //handle takes the index and value of an event from lazlo, 
 //typifies the value and calls the right function to push the data back
 //to whatever lua script asked for it.
 func handle(index int, val interface{}){
 	switch val.(type){
 	case lazlo.PatternMatch:
-		handleMessageCB(index, val.(lazlo.PatternMatch))	
+		handleMessageCB(index, pmTranslate(val.(lazlo.PatternMatch)))
 	case time.Time:
 		handleTimerCB(index, val.(time.Time))	
 	case map[string]interface{}:
@@ -118,7 +130,7 @@ func handle(index int, val interface{}){
 }
 
 //handleMessageCB brokers messages back to the lua script that asked for them
-func handleMessageCB(index int, message lazlo.PatternMatch){
+func handleMessageCB(index int, message LocalPatternMatch){
 	l := CBTable[index].Script.State
 	lmsg := luar.New(l, message)
 
@@ -170,13 +182,21 @@ func newMsgCallback(RID int, pat string, lfunc lua.LValue, isResponse bool){
 func (r Robot)Hear(pat string, lfunc lua.LValue){
 	newMsgCallback(r.ID, pat, lfunc, false)
 }
+/*func Hear(id int, pat string, lfunc lua.LValue){
+	newMsgCallback(id, pat, lfunc, false)
+}*/
 
 //lua function to process a command 
 func (r Robot)Respond(pat string, lfunc lua.LValue){
 	newMsgCallback(r.ID, pat, lfunc, true)
 }
+/*func Respond(id int, pat string, lfunc lua.LValue){
+	newMsgCallback(id, pat, lfunc, true)
+}*/
 
 //lua function to reply to a message passed to a lua-side callback
-func (pm LazloPatternMatch)Reply(words string){
+func (pm LocalPatternMatch)Reply(words string){
 	pm.Event.Reply(words)
 }
+
+
