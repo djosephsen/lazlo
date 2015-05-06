@@ -84,7 +84,6 @@ func luaMain (b *lazlo.Broker){
 
       // register hear and respond inside this lua state
     	script.State.SetGlobal("robot", luar.New(script.State, script.Robot))
-    	script.State.SetGlobal("respond", luar.New(script.State, Respond ))
 		LuaScripts = append(LuaScripts,script)
 
 		// the lua script will register callbacks to the Cases
