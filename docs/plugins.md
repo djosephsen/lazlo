@@ -25,7 +25,8 @@ var Hi = &lazlo.Module{  // note the capital H in Hi, makes this exportable
    Name: `Hi`,
    Usage: `"%BOTNAME% foo" : says hi on startup, and also replies "bar" to "%BOTNAME% foo"`,
    Run:   hiMain,
-} ```
+} 
+```
 
 The *Module* struct has three attributes, a Name string, a Usage string, and a
 function reference. Your module name is used to create an ID that will uniquely
@@ -73,6 +74,7 @@ func hiMain(b *lazlo.Broker){
 	cb := b.MessageCallback(`(?i)foo`, true)
 }
 ```
+
 The broker's *MessageCallback* function takes two arguments, a regex, and a
 boolean which dictates wheather or not the bot needs to be mentioned by name;
 ie: If this is *true* then our regex will match a command like *lazlo foo*, but
@@ -94,6 +96,7 @@ type MessageCallback struct{
    Chan           chan PatternMatch
 }
 ```
+
 ## Callback channels
 Each type of callback returns a different type of callback struct, and each
 type of callback struct contains a channel of one kind or another. In the case
@@ -224,6 +227,7 @@ the user via the chat-channel.
 
 Check out modules/linktest.go for an examplel of *LinkCallback* in the wild.
 
-### To be continued
+### stuff that works fine that still needs to be documented here
 * getting slack meta-info
 * in-memory and redis-backed Persistence (lazlo brain)
+* our interface for making web-api calls into slack
