@@ -28,7 +28,7 @@ var LinkTest = &lazlo.Module{
 				if option == `THIS`{
 					b.Say(fmt.Sprintf("I knew you'd get with this.. cause this is kinda phat"))
 				}else{
-					b.Say(fmt.Sprintf("You may were probably not a Blacksheep fan. bummer."))
+					b.Say(fmt.Sprintf("Not a Blacksheep fan eh? bummer."))
 				}
 			}
 		}

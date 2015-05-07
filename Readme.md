@@ -60,7 +60,8 @@ degress of complexity that should help get you started writing your own.
 ### Todo's in order of when I'll probably get to them:
 
 * De-registering callbacks isn't in yet but should be easy to knock out
-* Documentation Documentation Documentation
+* a *help* module
+* Godoc, Documentation Documentation and Documentation
 * Lua support is new and only includes support for message callbacks (hear respond and reply). I'd like you to be able to get timers and links via lua as well.
 * More included plugins
-* Leader-elections for HA bots. 
+* Leader-elections for HA bots.
