@@ -252,31 +252,6 @@ func (b *Broker) Register(things ...interface{}){
    }
 }
 
-/*
-func (b *Broker) DeRegister(thingy map[string]interface{}){
-// this is where we register user-provided plug-in code of various description
-   for _,thing := range things{
-      switch t := thing.(type) {
-      case *Module:
-			m:=thing.(*Module)
-         Logger.Debug(`registered Module: `,m.Name)
-         b.Modules[m.Name] = m
- 		case *ReadFilter:
-         r:=thing.(*ReadFilter)
-         Logger.Debug(`registered Read Filter: `, r.Name)
-         b.ReadFilters=append(b.ReadFilters, r)
-      case *WriteFilter:
-         w:=thing.(*WriteFilter)
-         Logger.Debug(`registered Write Filter: `, w.Name)
-         b.WriteFilters=append(b.WriteFilters, w)
-      default:
-         weirdType:=fmt.Sprintf(`%T`,t)
-         Logger.Error(`sorry I cant register this handler because I don't know what a `,weirdType, ` is`)
-      }
-   }
-}
-*/
-
 func (b *Broker) handleApiReply(thingy map[string]interface{}){
    chanID := int32(thingy[`reply_to`].(float64))
    Logger.Debug(`Broker:: caught a reply to: `, chanID)

@@ -26,8 +26,19 @@ func (t *TimerCallback) Start() error{
 func (t *TimerCallback) Run(dur time.Duration){
 	Logger.Debug(`scheduling timer `, t.ID, ` for: `,t.Next)
 	timer := time.NewTimer(dur)
-	alarm := <- timer.C //blocks waiting for the timer
-   t.Chan <- alarm //signals the module
-	t.Start() // (potentially) reschedule
+	stop := false
+	for !stop{
+		select{
+		case alarm := <- timer.C:
+   		t.Chan <- alarm //signal the module
+			t.Start() // (potentially) reschedule
+		case stop = <- t.stop:
+			stop = true
+		}
+	}
+}
+
+func (t *TimerCallback) Stop(){
+	t.stop <- true
 }
 

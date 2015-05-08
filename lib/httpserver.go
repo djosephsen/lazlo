@@ -6,11 +6,14 @@ import (
 	"github.com/bmizerany/pat"
 )
 
+//This map is redundant with the brokers cbIndex but there's
+//no way to get a reference to the broker into metaHandler so kludge
 var httpRoutes=make(map[string]*LinkCallback)
 
 type LinkCallback struct{
+	p				 string // the httpRoutes index value
    ID           string
-   Path         string
+   Path         string // the computed URL
    URL          string
    Handler      func(res http.ResponseWriter, req *http.Request)
    Chan         chan *http.Request
@@ -53,6 +56,7 @@ func metaHandler(res http.ResponseWriter, req *http.Request) {
 func (b *Broker) LinkCallback(p string, f ...func(http.ResponseWriter, *http.Request)) *LinkCallback{
 	path:=fmt.Sprintf("linkcb/%s",p)
    callback := &LinkCallback{
+		p:				p,
       ID:         fmt.Sprintf("link:%d",len(b.cbIndex[L])),
       Path:       path,
 		URL:			fmt.Sprintf("%s:%s/%s", b.Config.URL, b.Config.Port, path),
@@ -71,3 +75,8 @@ func (b *Broker) LinkCallback(p string, f ...func(http.ResponseWriter, *http.Req
    }
 	return callback
 }
+
+func (l *LinkCallback) Delete(){
+	delete(httpRoutes,l.p)
+}
+

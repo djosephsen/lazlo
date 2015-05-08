@@ -30,6 +30,7 @@ type TimerCallback struct{
 	State			 string
 	Next			 time.Time
    Chan         chan time.Time
+   stop         chan bool //send true on this channel to stop the timer
 }
 
 func (b *Broker) RegisterCallback(callback interface{}) error{
@@ -54,6 +55,31 @@ func (b *Broker) RegisterCallback(callback interface{}) error{
 		}
 return nil
 }
+
+func (b *Broker) DeRegisterCallback(callback interface{}) error{
+	switch callback.(type){
+		case *MessageCallback:
+			m:=callback.(*MessageCallback)
+			delete(b.cbIndex[M],m.ID)
+		case *EventCallback:
+			e:=callback.(*EventCallback)
+			delete(b.cbIndex[E],e.ID)
+		case *TimerCallback:
+			t:=callback.(*TimerCallback)
+			t.Stop() // dont leak timers
+			delete(b.cbIndex[T],t.ID)
+		case *LinkCallback:
+			l:=callback.(*LinkCallback)
+			l.Delete() //dont leak httproutes
+			delete(b.cbIndex[L],l.ID)
+		default:
+			err:=fmt.Errorf("unknown type in register callback: %T",callback)
+			Logger.Error(err)
+			return err
+		}
+return nil
+}
+
 
 func (b *Broker) MessageCallback(pattern string, respond bool) *MessageCallback{
    callback := &MessageCallback {
