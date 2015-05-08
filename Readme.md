@@ -16,6 +16,8 @@ many as you have memory for), and select between them in a loop. Throughout its
 lifetime, your Module can de-register the callbacks it doesn't need anymore, and
 ask for new ones as circumstances demand.
 
+!{}(docs/screenshots/lazlo.png)
+
 Currently there are three different kinds of callbacks you can ask for.
 
 * [Message callbacks](docs/messagecb.md) specify regex you want to listen for and respond to. 
