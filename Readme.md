@@ -18,9 +18,10 @@ ask for new ones as circumstances demand.
 
 ![](docs/screenshots/lazlo.png)
 
-Currently there are three different kinds of callbacks you can ask for.
+Currently there are four different kinds of callbacks you can ask for.
 
 * [Message callbacks](docs/messagecb.md) specify regex you want to listen for and respond to. 
+* [Event callbacks](docs/messagecb.md) specify [slack api events](https://api.slack.com/events) you want to listen for and respond to. 
 * [Timer Callbacks](docs/timercb.md) start a (possibly reoccuring) timer (in cron syntax), and notify you when it runs down
 * [Link Callbacks](docs/linkcb.md) create a URL that users can click on. When they do, their GET request is brokered back to your module. (Post and Put support coming soon)
 
