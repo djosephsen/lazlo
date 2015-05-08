@@ -19,14 +19,14 @@ type Brain interface {
 func (b *Broker) newBrain() (Brain, error) {
 	var brain Brain
 	var err error
-	if b.Config.RedisURL != ``{
+	if b.Config.RedisURL != `` {
 		Logger.Debug(`Brain:: setting up a Redis Brain to: `, b.Config.RedisURL)
-		if brain, err =	newRedisBrain(b); err != nil{
+		if brain, err = newRedisBrain(b); err != nil {
 			return brain, err
 		}
-	}else{
+	} else {
 		Logger.Debug(`Brain:: setting up an in-memory Brain`)
-		if brain, err =	newRAMBrain(b); err != nil{
+		if brain, err = newRAMBrain(b); err != nil {
 			return brain, err
 		}
 	}
@@ -77,19 +77,19 @@ func (rb *ramBrain) Delete(key string) error {
 
 //redisbrain backend storage implementation
 type redisBrain struct {
-	url			string
-	pw			   string
-	nameSpace	string
-	client redis.Conn
+	url       string
+	pw        string
+	nameSpace string
+	client    redis.Conn
 }
 
 // New returns an new initialized store
 func newRedisBrain(b *Broker) (Brain, error) {
 	s := &redisBrain{
-		url: b.Config.RedisURL,
+		url:       b.Config.RedisURL,
 		nameSpace: b.Config.Name,
 	}
-	if b.Config.RedisPW != ``{
+	if b.Config.RedisPW != `` {
 		s.pw = b.Config.RedisPW
 	}
 	return s, nil
@@ -106,11 +106,11 @@ func (rb *redisBrain) Open() error {
 		Logger.Error(err)
 		return err
 	}
-	
+
 	rb.client = conn
 
-	if rb.pw != ``{
-		if _, err := rb.client.Do("AUTH", rb.pw); err != nil{
+	if rb.pw != `` {
+		if _, err := rb.client.Do("AUTH", rb.pw); err != nil {
 			return err
 		}
 	}
@@ -160,4 +160,3 @@ func (rb *redisBrain) Delete(key string) error {
 func (rb *redisBrain) namespace(key string) string {
 	return fmt.Sprintf("%s:%s", rb.nameSpace, key)
 }
-
