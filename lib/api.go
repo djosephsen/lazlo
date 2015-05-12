@@ -151,6 +151,12 @@ func (event *Event) Respond(s string) chan map[string]interface{} {
 	})
 }
 
+// Get a Direct-Message Channel to the user from a given event
+func (event *Event) GetDM(s string) chan map[string]interface{} {
+	return event.Broker.GetDM(event.User)
+}
+
+
 // this is a confusing hack that I'm using because slack's RTM websocket
 // doesn't seem to support their own markup syntax. So anything that looks
 // like it has markup in it is sent into this function by the write thread

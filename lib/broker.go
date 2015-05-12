@@ -376,6 +376,15 @@ func (b *Broker) Respond(text string, thing *interface{}, isReply bool) chan map
 	})
 }
 
+//Get a direct message channel ID so we can DM the given user
+func (b *Broker) GetDM(ID string) string {
+	reply := b.Send(&Event{
+		Type:	`im.open`,
+		User:	ID,
+	})
+	return reply[`channel`][`id`]
+}
+
 //returns the Team's default channel
 func (b *Broker) DefaultChannel() string {
 	for _, c := range b.SlackMeta.Channels {
