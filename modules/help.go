@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"string"
 	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
@@ -12,16 +13,27 @@ var Help = lazlo.MessageHandler{
 }
 
 func helpRun(b *lazlo.Broker) {
-	cb := b.MessageCallback(`(?i)(ping|syn)`, true)
-		for {
-			pm := <-cb.Chan
-			pm.Event.Reply(randReply())
-		}
+	cb := b.MessageCallback(`(?i)help`, true)
+	for {
+		pm := <-cb.Chan
+		go getHelp(b, pm)
+	}
+}
+
+func getHelp(b *lazlo.Broker, pm *lazlo.PatternMatch){
+	dmChan := b.GetDM(pm.User)
+	reply:=``
+	for _, m := range b.Modules {
+		if strings.Contains(m.Usage,`%HIDDEN%`){continue}
+		usage:=strings.Replace(m.Usage,`%BOTNAME%`,b.Config.Name,-1)
+
+
+	}
+	pm.Event.Reply(randReply())
 }
 
 		if len(e.Sbot.Broker.MessageHandlers) > 0 {
 			line := fmt.Sprintf("######## Message Handlers ##########\n")
-			for _, h := range e.Sbot.Broker.MessageHandlers {
 				line += fmt.Sprintf("*%s*:: %s\n", h.Name, h.Usage)
 			}
 			e.Respond(line)
