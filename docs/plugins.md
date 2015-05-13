@@ -30,13 +30,13 @@ var Hi = &lazlo.Module{  // note the capital H in Hi, makes this exportable
 
 The *Module* struct has three attributes, a Name string, a Usage string, and a
 function reference. Your module name is used to create an ID that will uniquely
-identify your module internally. The Usage string is used by the help plugin to
+identify your module internally. The Usage string is used by the *help plugin* to
 print information about your bot to users. There are a few Macro's the help
 module understands that make it a little easier to write usage strings. 
 
  * %BOTNAME% will be replaced with the value of the environment variable LAZLO.NAME
- * %HIDDEN% will instruct the help program to omit your bot from its output
- unless the user specifies an *ALL* switch
+ * %HIDDEN% will instruct the *help module* to omit your module from its output
+ 
 
 ## The Lazlo Modules Run Function
 The Run attribute specifies the entry point for your module. You can think of

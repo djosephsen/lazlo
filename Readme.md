@@ -62,8 +62,8 @@ degress of complexity that should help get you started writing your own.
 
 ### Todo's in order of when I'll probably get to them:
 
-* a *help* module
-* Leader-elections for HA bots. (moved up because heroku's new not-free dynos)
+* Plugin to keep lazlo metadata in synch with Slack
+* Leader-elections for HA bots. (moved up because [heroku changing it's dyno pricing](http://www.octolabs.com/blogs/octoblog/2015/03/31/analysis-of-the-rumored-heroku-pricing-changes/))
 * Godoc, Documentation Documentation and Documentation
 * Lua support is new and only includes support for message callbacks (hear respond and reply). I'd like you to be able to get timers and links via lua as well.
 * More included plugins
