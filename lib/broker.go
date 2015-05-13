@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"github.com/ccding/go-logging/logging"
 	"github.com/gorilla/websocket"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"time"
-	"net/url"
 )
 
 // Logger is a global reference to our logging object
@@ -384,16 +384,16 @@ func (b *Broker) Respond(text string, thing *interface{}, isReply bool) chan map
 //Get a direct message channel ID so we can DM the given user
 func (b *Broker) GetDM(ID string) string {
 	req := ApiRequest{ //use the web api so we don't block waiting for the read thread
-		URL:	`https://slack.com/api/im.open`,
+		URL:    `https://slack.com/api/im.open`,
 		Values: make(url.Values),
 		Broker: b,
 	}
-	 req.Values.Set(`user`,ID)
+	req.Values.Set(`user`, ID)
 	reply, err := MakeAPIReq(req)
-	if err != nil{
-		Logger.Error(`error making api request for dm channel: `,err)
+	if err != nil {
+		Logger.Error(`error making api request for dm channel: `, err)
 		return ``
-	}else{
+	} else {
 		return reply.Channel.ID
 	}
 }
