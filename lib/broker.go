@@ -240,6 +240,10 @@ func (b *Broker) Register(things ...interface{}) {
 			m := thing.(*Module)
 			Logger.Debug(`registered Module: `, m.Name)
 			b.Modules[m.Name] = m
+		case Module:
+			m := thing.(Module)
+			Logger.Debug(`registered Module: `, m.Name)
+			b.Modules[m.Name] = &m
 		case *ReadFilter:
 			r := thing.(*ReadFilter)
 			Logger.Debug(`registered Read Filter: `, r.Name)
@@ -384,6 +388,7 @@ func (b *Broker) GetDM(ID string) string {
 		Values: make(url.Values),
 		Broker: b,
 	}
+	 req.Values.Set(`user`,ID)
 	reply, err := MakeAPIReq(req)
 	if err != nil{
 		Logger.Error(`error making api request for dm channel: `,err)

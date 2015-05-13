@@ -6,9 +6,9 @@ import (
 	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
-var Help = lazlo.Module{
+var Help = &lazlo.Module{
 	Name:    `Help`,
-	Usage:   `%BOTNAME% help: prints the usage information of every registered plugin`,
+	Usage:   `"%BOTNAME% help": prints the usage information of every registered plugin`,
 	Run: 		helpRun, 
 }
 

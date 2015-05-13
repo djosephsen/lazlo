@@ -8,7 +8,7 @@ import (
 
 var BrainTest = &lazlo.Module{
 	Name:  `BrainTest`,
-	Usage: `%BOTNAME% brain [set|get] <key> <value>`,
+	Usage: `"%BOTNAME% brain [set|get] <key> <value>": tests lazlo's persistent storage (aka the brain)`,
 	Run: func(b *lazlo.Broker) {
 		callback := b.MessageCallback(`(?i:brain) ((?i)set|get) (\w+) *(\w*)$`, true)
 		for {
