@@ -152,7 +152,7 @@ func (event *Event) Respond(s string) chan map[string]interface{} {
 }
 
 // Get a Direct-Message Channel to the user from a given event
-func (event *Event) GetDM(s string) chan map[string]interface{} {
+func (event *Event) GetDM(s string) string{
 	return event.Broker.GetDM(event.User)
 }
 

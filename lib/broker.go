@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"net/url"
 )
 
 // Logger is a global reference to our logging object
@@ -378,11 +379,18 @@ func (b *Broker) Respond(text string, thing *interface{}, isReply bool) chan map
 
 //Get a direct message channel ID so we can DM the given user
 func (b *Broker) GetDM(ID string) string {
-	reply := b.Send(&Event{
-		Type:	`im.open`,
-		User:	ID,
-	})
-	return reply[`channel`][`id`]
+	req := ApiRequest{ //use the web api so we don't block waiting for the read thread
+		URL:	`https://slack.com/api/im.open`,
+		Values: make(url.Values),
+		Broker: b,
+	}
+	reply, err := MakeAPIReq(req)
+	if err != nil{
+		Logger.Error(`error making api request for dm channel: `,err)
+		return ``
+	}else{
+		return reply.Channel.ID
+	}
 }
 
 //returns the Team's default channel
