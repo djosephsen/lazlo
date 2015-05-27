@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"fmt"
 	lazlo "github.com/djosephsen/lazlo/lib"
+	"fmt"
 	"regexp"
+	"encoding/json"
 )
 
 var MetaInfo = lazlo.Module{
@@ -26,21 +27,22 @@ func metaRun(b *lazlo.Broker){
 		case pm := <-listCB.Chan :
 			listOrDump(b, cb)
 		case evnt := <-newUserCB.Chan :
-			newUser(b, evnt.[`user`].(lazlo.User))
+			modUser(b, evnt.[`user`])
 		case evnt := <-newGroupCB.Chan :
-			newGroup(b,cb)
+			modGroup(b,cb)
 		case evnt := <-newChannelCB.Chan :
-			newChannel(b,cb)
+			modChannel(b,cb)
 		case evnt := <-replaceUserCB.Chan :
-			replaceUser(b,cb)
+			modUser(b,cb)
 		case evnt := <-replaceGroupCB.Chan :
-			replaceGroup(b,cb)
+			modGroup(b,cb)
 		case evnt := <-replaceChannelCB.Chan :
-			replaceChannel(b,cb)
+			modChannel(b,cb)
 		}
 	}
 }
-	
+
+//Figure out weather to list or dump a thingy and list or dump it
 func listOrDump(b *Broker, pm *lazlo.PatternMatch){
 	match:=pm.Match
 	typeOfThing := match[1]
@@ -57,6 +59,7 @@ func listOrDump(b *Broker, pm *lazlo.PatternMatch){
 	}
 }
 
+//List a thingy
 func listThing(b *lazlo.Broker, typeOfThing string) string {
 	var reply string
 	if matches, _ := regexp.MatchString(`(?i)channel`, typeOfThing); matches {
@@ -73,6 +76,7 @@ func listThing(b *lazlo.Broker, typeOfThing string) string {
 	return reply
 }
 
+//Dump a thingy
 func dumpThing(b *lazlo.Broker, typeOfThing string, id string) string {
 	var reply string
 	if matches, _ := regexp.MatchString(`(?i)channel`, typeOfThing); matches {
@@ -87,10 +91,17 @@ func dumpThing(b *lazlo.Broker, typeOfThing string, id string) string {
 	return reply
 }
 
-func newUser(b *lazlo.Broker, user lazlo.User){
-   for _, exists := range b.Meta.Users {
+//Add a new user or replace it if it already exists
+func modUser(b *lazlo.Broker, userThingy interface{}){
+	user:= new(lazlo.User)
+	juser,_:=json.Marshal(user)
+	json.Unmarshal(juser,user)
+   for k, exists := range b.Meta.Users {
       if exists.ID == user.ID {
          lazlo.Logger.Debug(`pre-existing user: `, user.Name)
+			l:=len(b.Meta.Users)
+			b.Meta.Users[k]=b.Meta.Users[l-1]
+			b.Meta.Users=b.Meta.Users[:l-1]
          return
       }
    }
@@ -98,16 +109,38 @@ func newUser(b *lazlo.Broker, user lazlo.User){
    b.Meta.Users = append(b.Meta.Users, user)
 }
 
-func newChannel(b *lazlo.Broker, chanThingy interface{}) {
-   channel := new(sl.Channel)
+//Add a new Channel or replace it if it already exists
+func modChannel(b *lazlo.Broker, chanThingy interface{}) {
+   channel := new(b.Channel)
    jthingy, _ := json.Marshal(chanThingy)
    json.Unmarshal(jthingy, channel)
-   for _, exists := range bot.Meta.Channels {
+   for _, exists := range b.Meta.Channels {
       if exists.ID == channel.ID {
-         sl.Logger.Debug(`pre-existing channel: `, channel.Name)
+			l:=len(b.Meta.Channels)
+			b.Meta.Channels[k]=b.Meta.Channels[l-1]
+			b.Meta.Channels=b.Meta.Channels[:l-1]
+         lazlo.Logger.Debug(`pre-existing channel: `, channel.Name)
          return
       }
    }
-   sl.Logger.Debug(`adding channel to Meta: `, channel.Name)
-   bot.Meta.Channels = append(bot.Meta.Channels, *channel)
+   lazlo.Logger.Debug(`adding channel to Meta: `, channel.Name)
+   b.Meta.Channels = append(b.Meta.Channels, *channel)
+}
+
+//Add a new group or replace it if it already exists
+func modGroup(b *lazlo.Broker, groupThingy interface{}){
+	group:= new(lazlo.Group)
+	jgroup,_:=json.Marshal(group)
+	json.Unmarshal(jgroup,group)
+   for k, exists := range b.Meta.Groups {
+      if exists.ID == group.ID {
+         lazlo.Logger.Debug(`pre-existing group: `, group.Name)
+			l:=len(b.Meta.Groups)
+			b.Meta.Groups[k]=b.Meta.Groups[l-1]
+			b.Meta.Groups=b.Meta.Groups[:l-1]
+         return
+      }
+   }
+   lazlo.Logger.Debug(`adding group to Meta: `, group.Name)
+   b.Meta.Groups = append(b.Meta.Groups, group)
 }
