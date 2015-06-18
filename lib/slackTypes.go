@@ -23,18 +23,40 @@ type ApiResponse struct {
 }
 
 type Event struct {
-	ID           int32  `json:"id,omitempty"`
-	Type         string `json:"type,omitempty"`
-	Channel      string `json:"channel,omitempty"`
-	Text         string `json:"text,omitempty"`
-	User         string `json:"user,omitempty"`
-	UserName     string `json:"username,omitempty"`
-	BotID        string `json:"bot_id,omitempty"`
-	Subtype      string `json:"subtype,omitempty"`
-	Ts           string `json:"ts,omitempty,omitempty"`
+	ID           int32        `json:"id,omitempty"`
+	Type         string       `json:"type,omitempty"`
+	Channel      string       `json:"channel,omitempty"`
+	Text         string       `json:"text,omitempty"`
+	Attachments  []Attachment `json:"attachments,omitempty"`
+	User         string       `json:"user,omitempty"`
+	UserName     string       `json:"username,omitempty"`
+	BotID        string       `json:"bot_id,omitempty"`
+	Subtype      string       `json:"subtype,omitempty"`
+	Ts           string       `json:"ts,omitempty,omitempty"`
 	Broker       *Broker
 	CallBackCode string `json:"callbackcode",omitempty,omitempty"`
 	Extra        map[string]interface{}
+}
+
+type Attachment struct {
+	Fallback   string            `json:"fallback"`
+	Color      string            `json:"color,omitempty"`
+	Pretext    string            `json:"pretext,omitempty"`
+	AuthorName string            `json:"author_name,omitempty"`
+	AuthorLink string            `json:"author_link,omitempty"`
+	AuthorIcon string            `json:"author_icon,omitempty"`
+	Title      string            `json:"title,omitempty"`
+	TitleLink  string            `json:"title_link,omitempty"`
+	Text       string            `json:"text,omitempty"`
+	Fields     []AttachmentField `json:"fields,omitempty"`
+	ImageUrl   string            `json:"image_url,omitempty"`
+	ThumbUrl   string            `json:"thumb_url,omitempty"`
+}
+
+type AttachmentField struct {
+	Title string `json:"title"`
+	Value string `json:"value"`
+	Short bool   `json:"short,omitempty"`
 }
 
 type User struct {

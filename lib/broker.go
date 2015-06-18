@@ -159,8 +159,8 @@ func (w *WriteThread) Start() {
 				}
 				ejson = stupidUTFHack(e)
 			}
-			if matches, _ := regexp.MatchString(`<[hH#@].+>`, string(ejson)); matches {
-				Logger.Debug(`message formtting detected; sending via api`)
+			if matches, _ := regexp.MatchString(`<[hH#@].+>`, string(ejson)); matches || e.Attachments != nil {
+				Logger.Debug(`message formatting detected; sending via api`)
 				e.Broker = w.broker
 				apiPostMessage(e)
 			} else {
