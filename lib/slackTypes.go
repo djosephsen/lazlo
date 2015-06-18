@@ -32,9 +32,9 @@ type Event struct {
 	UserName     string       `json:"username,omitempty"`
 	BotID        string       `json:"bot_id,omitempty"`
 	Subtype      string       `json:"subtype,omitempty"`
-	Ts           string       `json:"ts,omitempty,omitempty"`
+	Ts           string       `json:"ts,omitempty"`
 	Broker       *Broker
-	CallBackCode string `json:"callbackcode",omitempty,omitempty"`
+	CallBackCode string `json:"callbackcode,omitempty"`
 	Extra        map[string]interface{}
 }
 
@@ -51,6 +51,7 @@ type Attachment struct {
 	Fields     []AttachmentField `json:"fields,omitempty"`
 	ImageUrl   string            `json:"image_url,omitempty"`
 	ThumbUrl   string            `json:"thumb_url,omitempty"`
+	MarkdownIn []string          `json:"mrkdwn_in,omitempty"`
 }
 
 type AttachmentField struct {
