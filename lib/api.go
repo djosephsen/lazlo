@@ -135,11 +135,7 @@ func (meta *ApiResponse) GetChannelByName(name string) *Channel {
 // Reply is a convienence function to REPLY to a given event object
 func (event *Event) Reply(s string) chan map[string]interface{} {
 	replyText := fmt.Sprintf(`%s: %s`, event.Broker.SlackMeta.GetUserName(event.User), s)
-	return event.Broker.Send(&Event{
-		Type:    event.Type,
-		Channel: event.Channel,
-		Text:    replyText,
-	})
+	return event.Respond(replyText)
 }
 
 // Respond is a convienence function to RESPOND to a given event object
@@ -148,6 +144,16 @@ func (event *Event) Respond(s string) chan map[string]interface{} {
 		Type:    event.Type,
 		Channel: event.Channel,
 		Text:    s,
+	})
+}
+
+// RespondAttachments is a function to RESPOND WITH ATTACHMENTS to a given event object
+func (event *Event) RespondAttachments(a []Attachment) chan map[string]interface{} {
+	return event.Broker.Send(&Event{
+		Type:        event.Type,
+		Channel:     event.Channel,
+		Text:        "",
+		Attachments: a,
 	})
 }
 
@@ -161,6 +167,7 @@ func (event *Event) GetDM(s string) string {
 // like it has markup in it is sent into this function by the write thread
 // instead of into the websocket where it belongs.
 func apiPostMessage(e Event) {
+	Logger.Debug(`Posting through api`)
 	var req = ApiRequest{
 		URL:    `https://slack.com/api/chat.postMessage`,
 		Values: make(url.Values),
@@ -168,6 +175,10 @@ func apiPostMessage(e Event) {
 	}
 	req.Values.Set(`channel`, e.Channel)
 	req.Values.Set(`text`, e.Text)
+	if e.Attachments != nil {
+		aJson, _ := json.Marshal(e.Attachments)
+		req.Values.Set(`attachments`, string(aJson))
+	}
 	req.Values.Set(`id`, strconv.Itoa(int(e.ID)))
 	req.Values.Set(`as_user`, e.Broker.Config.Name)
 	req.Values.Set(`pretty`, `1`)
