@@ -21,6 +21,7 @@ const M = "messages"
 const E = "events"
 const T = "timers"
 const L = "links"
+const Q = "questions"
 
 // Broker is the all-knowing repository of references
 type Broker struct {
@@ -35,6 +36,7 @@ type Broker struct {
 	WriteFilters []*WriteFilter
 	MID          int32
 	WriteThread  *WriteThread
+	QuestionThread  *QuestionThread
 	SigChan      chan os.Signal
 	SyncChan     chan bool
 	ThreadCount  int32
@@ -53,6 +55,12 @@ type WriteThread struct {
 	broker   *Broker
 	Chan     chan Event
 	SyncChan chan bool
+}
+
+// The QuestionThread serializes questions and sends questions to users
+type QuestionThread struct {
+	broker   *Broker
+	userdex  map[string] QuestionQueue
 }
 
 // ReadFilter is a yet-to-be-implemented hook run on all inbound
@@ -84,6 +92,9 @@ func NewBroker() (*Broker, error) {
 			Chan:     make(chan Event),
 			SyncChan: make(chan bool),
 		},
+		QuestionThread: &QuestionThread{
+			userdex: make(map[string]QuestionQueue),
+		},
 		SigChan:  make(chan os.Signal),
 		SyncChan: make(chan bool),
 	}
@@ -94,7 +105,9 @@ func NewBroker() (*Broker, error) {
 	broker.cbIndex[E] = make(map[string]interface{})
 	broker.cbIndex[T] = make(map[string]interface{})
 	broker.cbIndex[L] = make(map[string]interface{})
+	broker.cbIndex[Q] = make(map[string]interface{})
 	broker.WriteThread.broker = broker
+	broker.QuestionThread.broker = broker
 
 	//connect to slack and establish an RTM websocket
 	socket, meta, err := broker.getASocket()
@@ -122,10 +135,11 @@ func (broker *Broker) Stop() {
 	broker.WriteThread.SyncChan <- true
 }
 
-// It's called Start(), I mean srsly.
+// Broker.Start() starts the broker
 func (broker *Broker) Start() {
 	go broker.StartHttp()
 	go broker.WriteThread.Start()
+	go broker.QuestionThread.Start()
 	Logger.Debug(`Broker:: entering read-loop`)
 	for {
 		thingy := make(map[string]interface{})
@@ -176,6 +190,54 @@ func (w *WriteThread) Start() {
 	w.broker.SyncChan <- true
 }
 
+// QuestionThread.Start() starts the question-serializer service
+func (qt *QuestionThread) Start(){
+	for {
+		// loop if there are no question callbacks
+		if qt.broker.cbIndex[Q] == nil {
+			time.Sleep(1)
+			continue
+		}
+		// create & start new queues if necessary and send the questions
+		for _,qi := range qt.broker.cbIndex[Q]{
+			question := qi.(*QuestionCallback)
+			user := question.User
+			if question.asked{
+				qt.broker.DeRegisterCallback(question)
+				continue
+			}
+			if queue, ok := qt.userdex[user]; ok{
+				queue.in <- question
+				question.asked = true
+			}else{
+				qt.userdex[user] = QuestionQueue{
+					in:  make(chan *QuestionCallback, 100), //LIMIT ALERT!
+				}
+				newQueue := qt.userdex[user]
+				go newQueue.Launch(qt.broker)
+				newQueue.in <- question
+			}
+			question.asked=true
+		}
+		time.Sleep(1)
+	}
+}
+
+//QuestionQueue.Launch is a worker that serializes questions to one person
+func (qq *QuestionQueue) Launch(b *Broker){
+	for {
+		question := <- qq.in //block wating for the next QuestionCallback
+		if question.DMChan == "" {
+			question.DMChan = b.GetDM(question.User)
+		}
+		b.Say(question.Question, question.DMChan)
+		cb := b.MessageCallback(`.*`, false, question.DMChan)
+		reply := <-cb.Chan // block waiting for a response from the user
+		question.Answer <- reply.Match[0]
+		b.DeRegisterCallback(cb)
+	}
+}
+
 //This stupid hack un-does the utf-escaping performed  by json.Marshal()
 //because although Slack correctly parses utf, it doesn't recognize
 //utf-escaped markup like <http://myurl.com|myurl>
@@ -197,6 +259,8 @@ func (b *Broker) NextMID() int32 {
 	return b.MID
 }
 
+//broker.This() takes an inbound thingy of unknown type and brokers it to wherever
+// it needs to go
 func (b *Broker) This(thingy map[string]interface{}) {
 	if b.Modules == nil {
 		Logger.Debug(`Broker:: Got a `, thingy[`type`], ` , but no modules are loaded!`)
@@ -232,8 +296,8 @@ func (b *Broker) This(thingy map[string]interface{}) {
 	}
 }
 
+// broker.Register() registers user-provided plug-ins
 func (b *Broker) Register(things ...interface{}) {
-	// this is where we register user-provided plug-in code of various description
 	for _, thing := range things {
 		switch t := thing.(type) {
 		case *Module:
@@ -259,6 +323,8 @@ func (b *Broker) Register(things ...interface{}) {
 	}
 }
 
+//broker.handleApiReply() catches API responses and sends them back to the 
+// requestor if the requestor cares
 func (b *Broker) handleApiReply(thingy map[string]interface{}) {
 	chanID := int32(thingy[`reply_to`].(float64))
 	Logger.Debug(`Broker:: caught a reply to: `, chanID)
@@ -274,6 +340,8 @@ func (b *Broker) handleApiReply(thingy map[string]interface{}) {
 	}
 }
 
+//broker.handleMessage() gets messages from broker.This() and handles them according
+// to the user-provided plugins currently loaded.
 func (b *Broker) handleMessage(thingy map[string]interface{}) {
 	if b.cbIndex[M] == nil {
 		return
@@ -285,6 +353,16 @@ func (b *Broker) handleMessage(thingy map[string]interface{}) {
 	botNamePat := fmt.Sprintf(`^(?:@?%s[:,]?)\s+(?:${1})`, b.Config.Name)
 	for _, cbInterface := range b.cbIndex[M] {
 		callback := cbInterface.(*MessageCallback)
+
+		Logger.Debug(`Broker:: checking callback: `, callback.ID)
+		if callback.SlackChan != ``{
+			if callback.SlackChan != message.Channel{
+			   Logger.Debug(`Broker:: dropping message because chan mismatch: `, callback.ID)
+				continue //skip this message because it doesn't match the cb's channel filter
+			}else{
+			   Logger.Debug(`Broker:: channel filter match for: `, callback.ID)
+			}
+		}
 		var r *regexp.Regexp
 		if callback.Respond {
 			r = regexp.MustCompile(strings.Replace(botNamePat, "${1}", callback.Pattern, 1))
@@ -293,7 +371,7 @@ func (b *Broker) handleMessage(thingy map[string]interface{}) {
 		}
 		if r.MatchString(message.Text) {
 			match := r.FindAllStringSubmatch(message.Text, -1)[0]
-			Logger.Debug(`Broker:: running callback: `, callback.ID)
+			Logger.Debug(`Broker:: firing callback: `, callback.ID)
 			callback.Chan <- PatternMatch{Event: message, Match: match}
 		}
 	}
@@ -304,9 +382,10 @@ func (b *Broker) handleEvent(thingy map[string]interface{}) {
 		return
 	}
 	for _, cbInterface := range b.cbIndex[E] {
-		callback := cbInterface.(EventCallback)
+		callback := cbInterface.(*EventCallback)
 		if keyVal, keyExists := thingy[callback.Key]; keyExists && keyVal != nil {
 			if matches, _ := regexp.MatchString(callback.Val, keyVal.(string)); matches {
+				Logger.Debug(`Broker:: firing callback: `, callback.ID)
 				callback.Chan <- thingy
 			}
 		}
