@@ -6,10 +6,10 @@ import (
 )
 
 type MessageCallback struct {
-	ID      string
-	Pattern string
-	Respond bool // if true, only respond if the bot is mentioned by name
-	Chan    chan PatternMatch
+	ID        string
+	Pattern   string
+	Respond   bool // if true, only respond if the bot is mentioned by name
+	Chan      chan PatternMatch
 	SlackChan string // if set filter message callbacks to this Slack channel
 }
 
@@ -34,17 +34,17 @@ type TimerCallback struct {
 	stop     chan bool //send true on this channel to stop the timer
 }
 
-type QuestionCallback struct{
+type QuestionCallback struct {
 	ID       string
 	User     string
-	DMChan	string
+	DMChan   string
 	Question string
-	Answer	chan string
+	Answer   chan string
 	asked    bool
 }
 
-type QuestionQueue struct{
-	in     chan *QuestionCallback
+type QuestionQueue struct {
+	in chan *QuestionCallback
 }
 
 func (b *Broker) RegisterCallback(callback interface{}) error {
@@ -118,7 +118,7 @@ func (b *Broker) MessageCallback(pattern string, respond bool, channel ...string
 		Chan:    make(chan PatternMatch),
 	}
 
-	if channel != nil{
+	if channel != nil {
 		callback.SlackChan = channel[0] // todo: support an array of channels
 	}
 
@@ -159,8 +159,8 @@ func (b *Broker) TimerCallback(schedule string) *TimerCallback {
 
 func (b *Broker) QuestionCallback(user string, prompt string) *QuestionCallback {
 	callback := &QuestionCallback{
-		ID:      fmt.Sprintf("question:%d", len(b.cbIndex[Q])),
-		User:    user,
+		ID:       fmt.Sprintf("question:%d", len(b.cbIndex[Q])),
+		User:     user,
 		Question: prompt,
 		Answer:   make(chan string),
 	}
@@ -170,6 +170,5 @@ func (b *Broker) QuestionCallback(user string, prompt string) *QuestionCallback 
 	}
 	return callback
 }
-
 
 // LinkCallback() def is in httpserver.go because it includes net/http (sorry)

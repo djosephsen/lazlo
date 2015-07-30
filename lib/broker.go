@@ -25,21 +25,21 @@ const Q = "questions"
 
 // Broker is the all-knowing repository of references
 type Broker struct {
-	SlackMeta    *ApiResponse
-	Config       *Config
-	Socket       *websocket.Conn
-	Modules      map[string]*Module
-	Brain        Brain
-	ApiResponses map[int32]chan map[string]interface{}
-	cbIndex      map[string]map[string]interface{} //cbIndex[type][id]=pointer
-	ReadFilters  []*ReadFilter
-	WriteFilters []*WriteFilter
-	MID          int32
-	WriteThread  *WriteThread
-	QuestionThread  *QuestionThread
-	SigChan      chan os.Signal
-	SyncChan     chan bool
-	ThreadCount  int32
+	SlackMeta      *ApiResponse
+	Config         *Config
+	Socket         *websocket.Conn
+	Modules        map[string]*Module
+	Brain          Brain
+	ApiResponses   map[int32]chan map[string]interface{}
+	cbIndex        map[string]map[string]interface{} //cbIndex[type][id]=pointer
+	ReadFilters    []*ReadFilter
+	WriteFilters   []*WriteFilter
+	MID            int32
+	WriteThread    *WriteThread
+	QuestionThread *QuestionThread
+	SigChan        chan os.Signal
+	SyncChan       chan bool
+	ThreadCount    int32
 }
 
 // The Module type represents a user-defined plug-in. Build one of these
@@ -59,8 +59,8 @@ type WriteThread struct {
 
 // The QuestionThread serializes questions and sends questions to users
 type QuestionThread struct {
-	broker   *Broker
-	userdex  map[string] QuestionQueue
+	broker  *Broker
+	userdex map[string]QuestionQueue
 }
 
 // ReadFilter is a yet-to-be-implemented hook run on all inbound
@@ -191,7 +191,7 @@ func (w *WriteThread) Start() {
 }
 
 // QuestionThread.Start() starts the question-serializer service
-func (qt *QuestionThread) Start(){
+func (qt *QuestionThread) Start() {
 	for {
 		// loop if there are no question callbacks
 		if qt.broker.cbIndex[Q] == nil {
@@ -199,34 +199,34 @@ func (qt *QuestionThread) Start(){
 			continue
 		}
 		// create & start new queues if necessary and send the questions
-		for _,qi := range qt.broker.cbIndex[Q]{
+		for _, qi := range qt.broker.cbIndex[Q] {
 			question := qi.(*QuestionCallback)
 			user := question.User
-			if question.asked{
+			if question.asked {
 				qt.broker.DeRegisterCallback(question)
 				continue
 			}
-			if queue, ok := qt.userdex[user]; ok{
+			if queue, ok := qt.userdex[user]; ok {
 				queue.in <- question
 				question.asked = true
-			}else{
+			} else {
 				qt.userdex[user] = QuestionQueue{
-					in:  make(chan *QuestionCallback, 100), //LIMIT ALERT!
+					in: make(chan *QuestionCallback, 100), //LIMIT ALERT!
 				}
 				newQueue := qt.userdex[user]
 				go newQueue.Launch(qt.broker)
 				newQueue.in <- question
 			}
-			question.asked=true
+			question.asked = true
 		}
 		time.Sleep(1)
 	}
 }
 
 //QuestionQueue.Launch is a worker that serializes questions to one person
-func (qq *QuestionQueue) Launch(b *Broker){
+func (qq *QuestionQueue) Launch(b *Broker) {
 	for {
-		question := <- qq.in //block wating for the next QuestionCallback
+		question := <-qq.in //block wating for the next QuestionCallback
 		if question.DMChan == "" {
 			question.DMChan = b.GetDM(question.User)
 		}
@@ -323,7 +323,7 @@ func (b *Broker) Register(things ...interface{}) {
 	}
 }
 
-//broker.handleApiReply() catches API responses and sends them back to the 
+//broker.handleApiReply() catches API responses and sends them back to the
 // requestor if the requestor cares
 func (b *Broker) handleApiReply(thingy map[string]interface{}) {
 	chanID := int32(thingy[`reply_to`].(float64))
@@ -355,12 +355,12 @@ func (b *Broker) handleMessage(thingy map[string]interface{}) {
 		callback := cbInterface.(*MessageCallback)
 
 		Logger.Debug(`Broker:: checking callback: `, callback.ID)
-		if callback.SlackChan != ``{
-			if callback.SlackChan != message.Channel{
-			   Logger.Debug(`Broker:: dropping message because chan mismatch: `, callback.ID)
+		if callback.SlackChan != `` {
+			if callback.SlackChan != message.Channel {
+				Logger.Debug(`Broker:: dropping message because chan mismatch: `, callback.ID)
 				continue //skip this message because it doesn't match the cb's channel filter
-			}else{
-			   Logger.Debug(`Broker:: channel filter match for: `, callback.ID)
+			} else {
+				Logger.Debug(`Broker:: channel filter match for: `, callback.ID)
 			}
 		}
 		var r *regexp.Regexp
