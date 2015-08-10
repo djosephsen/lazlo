@@ -18,12 +18,13 @@ ask for new ones as circumstances demand.
 
 ![](docs/screenshots/lazlo.png)
 
-Currently there are four different kinds of callbacks you can ask for.
+Currently there are five different kinds of callbacks you can ask for.
 
 * [Message callbacks](docs/messagecb.md) specify regex you want to listen for and respond to. 
-* [Event callbacks](docs/messagecb.md) specify [slack api events](https://api.slack.com/events) you want to listen for and respond to. 
+* [Event callbacks](docs/eventcb.md) specify [slack api events](https://api.slack.com/events) you want to listen for and respond to. 
 * [Timer Callbacks](docs/timercb.md) start a (possibly reoccuring) timer (in cron syntax), and notify you when it runs down
 * [Link Callbacks](docs/linkcb.md) create a URL that users can click on. When they do, their GET request is brokered back to your module. (Post and Put support coming soon)
+* [Question Callbacks](docs/questioncb.md) make it easy to ask users a question, and capture their response. 
 
 Your module can register for all or none of these, as many times as it likes
 during the lifetime of the bot. Lazlo makes it easier to write modules that
@@ -40,14 +41,14 @@ module that:
 8. Captures output from that tool and presents it back to the user
 9. de-registers the timer and password callbacks
 
-That's an oversimplified example, but I think you probably get the idea. Check
-out the Modules directory for working examples that use the various callbacks. 
+That's an oversimplified example, but I hope you get the idea. Check out the
+Modules directory for working examples that use the various callbacks. 
 
-## Lua
-Lazlo ships with a module that works as a broker between lazlo and a lua state
-machine. If you actually just want to write simple plugins that respond to
-regex in channel, you can implement these very easily using hubot-like syntax
-[in lua](docs/lua.md)
+## Lua plug-ins
+Lazlo's event-driven framework is quite flexible. You can use it to write some
+pretty powerful modules in Go. For example, I implemented a module that embeds
+a lua state machine which makes it possible to extend Lazlo by write simple
+plugins that use hubot-like syntax [in lua](docs/lua.md)
 
 ## Whats next?
 * [get up and running](docs/install.md)
