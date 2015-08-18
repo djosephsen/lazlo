@@ -76,7 +76,7 @@ option2 := broker.LinkCallback(`option2`)
 ```
 
 And lazlo will wire up http://localhost/option1 and http://localhost/option2 to
-your callback Chan's
+your callback's Chan channel. 
 
 You can present those links to your users by wrapping them in [slack compatible
 markdown]() like this: 
