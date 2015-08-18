@@ -48,6 +48,7 @@ type LinkCallback struct {
    Handler func(res http.ResponseWriter, req *http.Request)
    Chan    chan *http.Request
 }
+```
 
 *ID* uniquely identifies your callback (as you're probably used to by now)
 
