@@ -172,8 +172,8 @@ you'll use in real life, and it's also pretty nifty. Note we don't have to put
 this for-loop in series. We could certainly spin off a go-routine to select on
 incoming events while we go and do something else.  
 
-## 4 types of callback
-Lazlo has three other callback types that make things even more interesting.
+## 5 types of callback
+Lazlo has four other callback types that make things even more interesting.
 
 ### EventCallbacks 
 You can use *EventCallback* to get raw events from the Slack RTM API as they

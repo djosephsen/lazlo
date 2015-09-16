@@ -1,7 +1,11 @@
 # The Link Callback
 
 Link callbacks let you present your users with embedded URLs they can click on.
-I use them to present my users with multiple-choice questions, 
+I use them to present my users with multiple-choice questions like this: 
+
+![](screenshots/link_choice.png)
+
+The callback function looks like this:
 
 ```
 cb := broker.LinkCallback(`option1`)
