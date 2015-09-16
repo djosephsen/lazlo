@@ -98,8 +98,8 @@ The serialization queue is itself a buffered channel with a hard-coded limit of
 100. In other words, there can only be 100 open questions at a time in the
 queue. In the future I might add an environment variable for this, but it's pretty easy to change in broker.go (hint: grep for "LIMIT ALERT"). 
 
-
 ## In the Future
-I'll probably add an additional EventCallback() method that works in a list
-context.. accepting more than one key/value pair, so you can specify multiple
-criteria to match. 
+Currently there's no way to de-register a question callback, which is a problem
+if, for example you ask a question from someone who went on vacation for
+example, or you want to timeout a question for any other reason. So yeah, I
+need to fix that.
