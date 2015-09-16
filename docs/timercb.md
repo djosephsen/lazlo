@@ -8,7 +8,7 @@ often use them to periodically query an external service like an RSS feed. They 
 cb := broker.TimerCallback(`0 */1 * * * * *`)
 ```
 
-The formal definition is [here]() in callbacks.go
+The formal definition is [here](https://github.com/djosephsen/lazlo/blob/master/lib/callbacks.go#L147) in callbacks.go
 
 As you can see, *TimerCallback()* is a method on the lazlo.Broker type.
 Whenever you write a lazlo module, you'll always be passed a pointer to the
