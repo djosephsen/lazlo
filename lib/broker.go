@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/ccding/go-logging/logging"
-	"github.com/gorilla/websocket"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/ccding/go-logging/logging"
+	"github.com/gorilla/websocket"
 )
 
 // Logger is a global reference to our logging object
@@ -181,7 +182,7 @@ func (w *WriteThread) Start() {
 				w.broker.Socket.WriteMessage(1, ejson)
 			}
 			Logger.Debug(string(ejson))
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Second)
 		case stop = <-w.SyncChan:
 			stop = true
 		}
@@ -195,7 +196,7 @@ func (qt *QuestionThread) Start() {
 	for {
 		// loop if there are no question callbacks
 		if qt.broker.cbIndex[Q] == nil {
-			time.Sleep(1)
+			time.Sleep(time.Second)
 			continue
 		}
 		// create & start new queues if necessary and send the questions
@@ -219,7 +220,8 @@ func (qt *QuestionThread) Start() {
 			}
 			question.asked = true
 		}
-		time.Sleep(1)
+
+		time.Sleep(time.Second)
 	}
 }
 
