@@ -3,6 +3,8 @@ package lib
 import (
 	"fmt"
 	"time"
+
+	"github.com/renstrom/shortuuid"
 )
 
 type MessageCallback struct {
@@ -129,11 +131,8 @@ func (b *Broker) DeRegisterCallback(callback interface{}) error {
 }
 
 func (b *Broker) MessageCallback(pattern string, respond bool, channel ...string) *MessageCallback {
-	b.callbacks[M].Lock()
-	l := len(b.callbacks[M].Index)
-	b.callbacks[M].Unlock()
 	callback := &MessageCallback{
-		ID:      fmt.Sprintf("message:%d", l),
+		ID:      fmt.Sprintf("message:%s", shortuuid.New()),
 		Pattern: pattern,
 		Respond: respond,
 		Chan:    make(chan PatternMatch),
@@ -151,11 +150,8 @@ func (b *Broker) MessageCallback(pattern string, respond bool, channel ...string
 }
 
 func (b *Broker) EventCallback(key string, val string) *EventCallback {
-	b.callbacks[E].Lock()
-	l := len(b.callbacks[E].Index)
-	b.callbacks[E].Unlock()
 	callback := &EventCallback{
-		ID:   fmt.Sprintf("event:%d", l),
+		ID:   fmt.Sprintf("event:%s", shortuuid.New()),
 		Key:  key,
 		Val:  val,
 		Chan: make(chan map[string]interface{}),
@@ -169,11 +165,8 @@ func (b *Broker) EventCallback(key string, val string) *EventCallback {
 }
 
 func (b *Broker) TimerCallback(schedule string) *TimerCallback {
-	b.callbacks[E].Lock()
-	l := len(b.callbacks[E].Index)
-	b.callbacks[E].Unlock()
 	callback := &TimerCallback{
-		ID:       fmt.Sprintf("timer:%d", l),
+		ID:       fmt.Sprintf("timer:%s", shortuuid.New()),
 		Schedule: schedule,
 		Chan:     make(chan time.Time),
 	}
@@ -185,11 +178,8 @@ func (b *Broker) TimerCallback(schedule string) *TimerCallback {
 }
 
 func (b *Broker) QuestionCallback(user string, prompt string) *QuestionCallback {
-	b.callbacks[Q].Lock()
-	l := len(b.callbacks[Q].Index)
-	b.callbacks[Q].Unlock()
 	callback := &QuestionCallback{
-		ID:       fmt.Sprintf("question:%d", l),
+		ID:       fmt.Sprintf("question:%s", shortuuid.New()),
 		User:     user,
 		Question: prompt,
 		Answer:   make(chan string),
