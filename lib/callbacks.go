@@ -51,25 +51,35 @@ func (b *Broker) RegisterCallback(callback interface{}) error {
 	switch callback.(type) {
 	case *MessageCallback:
 		m := callback.(*MessageCallback)
-		b.cbIndex[M][m.ID] = callback
-		Logger.Debug("New Callback Registered, id:", m.ID)
+		b.callbacks[M].Lock()
+		defer b.callbacks[M].Unlock()
+		b.callbacks[M].Index[m.ID] = callback
+		Logger.Debug("New Callback Registered, id:", m.ID, " *MessageCallback")
 	case *EventCallback:
 		e := callback.(*EventCallback)
-		b.cbIndex[E][e.ID] = callback
-		Logger.Debug("New Callback Registered, id:", e.ID)
+		b.callbacks[E].Lock()
+		defer b.callbacks[E].Unlock()
+		b.callbacks[E].Index[e.ID] = callback
+		Logger.Debug("New Callback Registered, id:", e.ID, " *EventCallback")
 	case *TimerCallback:
 		t := callback.(*TimerCallback)
 		t.Start()
-		b.cbIndex[T][t.ID] = callback
-		Logger.Debug("New Callback Registered, id:", t.ID)
+		b.callbacks[T].Lock()
+		defer b.callbacks[T].Unlock()
+		b.callbacks[T].Index[t.ID] = callback
+		Logger.Debug("New Callback Registered, id:", t.ID, ":= callback.( *TimerCallback")
 	case *LinkCallback:
 		l := callback.(*LinkCallback)
-		b.cbIndex[L][l.ID] = callback
-		Logger.Debug("New Callback Registered, id:", l.ID)
+		b.callbacks[L].Lock()
+		defer b.callbacks[L].Unlock()
+		b.callbacks[L].Index[l.ID] = callback
+		Logger.Debug("New Callback Registered, id:", l.ID, " *LinkCallback")
 	case *QuestionCallback:
 		q := callback.(*QuestionCallback)
-		b.cbIndex[Q][q.ID] = callback
-		Logger.Debug("New Callback Registered, id:", q.ID)
+		b.callbacks[Q].Lock()
+		defer b.callbacks[Q].Unlock()
+		b.callbacks[Q].Index[q.ID] = callback
+		Logger.Debug("New Callback Registered, id:", q.ID, " *QuestionCallback")
 	default:
 		err := fmt.Errorf("unknown type in register callback: %T", callback)
 		Logger.Error(err)
@@ -82,25 +92,33 @@ func (b *Broker) DeRegisterCallback(callback interface{}) error {
 	switch callback.(type) {
 	case *MessageCallback:
 		m := callback.(*MessageCallback)
-		delete(b.cbIndex[M], m.ID)
+		b.callbacks[M].Lock()
+		defer b.callbacks[M].Unlock()
+		delete(b.callbacks[M].Index, m.ID)
 		Logger.Debug("De-Registered callback, id: ", m.ID)
 	case *EventCallback:
 		e := callback.(*EventCallback)
-		delete(b.cbIndex[E], e.ID)
+		b.callbacks[E].Lock()
+		defer b.callbacks[E].Unlock()
+		delete(b.callbacks[E].Index, e.ID)
 		Logger.Debug("De-Registered callback, id: ", e.ID)
 	case *TimerCallback:
 		t := callback.(*TimerCallback)
 		t.Stop() // dont leak timers
-		delete(b.cbIndex[T], t.ID)
+		b.callbacks[T].Lock()
+		defer b.callbacks[T].Unlock()
+		delete(b.callbacks[T].Index, t.ID)
 		Logger.Debug("De-Registered callback, id: ", t.ID)
 	case *LinkCallback:
 		l := callback.(*LinkCallback)
 		l.Delete() //dont leak httproutes
-		delete(b.cbIndex[L], l.ID)
+		b.callbacks[L].Lock()
+		defer b.callbacks[L].Unlock()
+		delete(b.callbacks[L].Index, l.ID)
 		Logger.Debug("De-Registered callback, id: ", l.ID)
 	case *QuestionCallback:
 		q := callback.(*QuestionCallback)
-		delete(b.cbIndex[Q], q.ID)
+		delete(b.callbacks[Q].Index, q.ID)
 		Logger.Debug("De-Registered callback, id: ", q.ID)
 	default:
 		err := fmt.Errorf("unknown type in de-register callback: %T", callback)
@@ -111,8 +129,11 @@ func (b *Broker) DeRegisterCallback(callback interface{}) error {
 }
 
 func (b *Broker) MessageCallback(pattern string, respond bool, channel ...string) *MessageCallback {
+	b.callbacks[M].Lock()
+	l := len(b.callbacks[M].Index)
+	b.callbacks[M].Unlock()
 	callback := &MessageCallback{
-		ID:      fmt.Sprintf("message:%d", len(b.cbIndex[M])),
+		ID:      fmt.Sprintf("message:%d", l),
 		Pattern: pattern,
 		Respond: respond,
 		Chan:    make(chan PatternMatch),
@@ -130,8 +151,11 @@ func (b *Broker) MessageCallback(pattern string, respond bool, channel ...string
 }
 
 func (b *Broker) EventCallback(key string, val string) *EventCallback {
+	b.callbacks[E].Lock()
+	l := len(b.callbacks[E].Index)
+	b.callbacks[E].Unlock()
 	callback := &EventCallback{
-		ID:   fmt.Sprintf("event:%d", len(b.cbIndex[E])),
+		ID:   fmt.Sprintf("event:%d", l),
 		Key:  key,
 		Val:  val,
 		Chan: make(chan map[string]interface{}),
@@ -145,8 +169,11 @@ func (b *Broker) EventCallback(key string, val string) *EventCallback {
 }
 
 func (b *Broker) TimerCallback(schedule string) *TimerCallback {
+	b.callbacks[E].Lock()
+	l := len(b.callbacks[E].Index)
+	b.callbacks[E].Unlock()
 	callback := &TimerCallback{
-		ID:       fmt.Sprintf("timer:%d", len(b.cbIndex[E])),
+		ID:       fmt.Sprintf("timer:%d", l),
 		Schedule: schedule,
 		Chan:     make(chan time.Time),
 	}
@@ -158,8 +185,11 @@ func (b *Broker) TimerCallback(schedule string) *TimerCallback {
 }
 
 func (b *Broker) QuestionCallback(user string, prompt string) *QuestionCallback {
+	b.callbacks[Q].Lock()
+	l := len(b.callbacks[Q].Index)
+	b.callbacks[Q].Unlock()
 	callback := &QuestionCallback{
-		ID:       fmt.Sprintf("question:%d", len(b.cbIndex[Q])),
+		ID:       fmt.Sprintf("question:%d", l),
 		User:     user,
 		Question: prompt,
 		Answer:   make(chan string),

@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ccding/go-logging/logging"
@@ -24,6 +25,11 @@ const T = "timers"
 const L = "links"
 const Q = "questions"
 
+type cbIndex struct {
+	Index map[string]interface{} //callbacks.Index[type][id]=pointer
+	*sync.Mutex
+}
+
 // Broker is the all-knowing repository of references
 type Broker struct {
 	SlackMeta      *ApiResponse
@@ -32,7 +38,7 @@ type Broker struct {
 	Modules        map[string]*Module
 	Brain          Brain
 	ApiResponses   map[int32]chan map[string]interface{}
-	cbIndex        map[string]map[string]interface{} //cbIndex[type][id]=pointer
+	callbacks      map[string]cbIndex
 	ReadFilters    []*ReadFilter
 	WriteFilters   []*WriteFilter
 	MID            int32
@@ -88,7 +94,6 @@ func NewBroker() (*Broker, error) {
 		Config:       newConfig(),
 		Modules:      make(map[string]*Module),
 		ApiResponses: make(map[int32]chan map[string]interface{}),
-		cbIndex:      make(map[string]map[string]interface{}),
 		WriteThread: &WriteThread{
 			Chan:     make(chan Event),
 			SyncChan: make(chan bool),
@@ -101,12 +106,13 @@ func NewBroker() (*Broker, error) {
 	}
 	//correctly set the log level
 	Logger.SetLevel(logging.GetLevelValue(strings.ToUpper(broker.Config.LogLevel)))
-
-	broker.cbIndex[M] = make(map[string]interface{})
-	broker.cbIndex[E] = make(map[string]interface{})
-	broker.cbIndex[T] = make(map[string]interface{})
-	broker.cbIndex[L] = make(map[string]interface{})
-	broker.cbIndex[Q] = make(map[string]interface{})
+	broker.callbacks = make(map[string]cbIndex)
+	for _, a := range []string{M, E, T, L, Q} {
+		broker.callbacks[a] = cbIndex{
+			Index: make(map[string]interface{}),
+			Mutex: new(sync.Mutex),
+		}
+	}
 	broker.WriteThread.broker = broker
 	broker.QuestionThread.broker = broker
 
@@ -144,7 +150,10 @@ func (broker *Broker) Start() {
 	Logger.Debug(`Broker:: entering read-loop`)
 	for {
 		thingy := make(map[string]interface{})
-		broker.Socket.ReadJSON(&thingy)
+		if err := broker.Socket.ReadJSON(&thingy); err != nil {
+			Logger.Fatal(`Loop:: Error `, err)
+			os.Exit(1)
+		}
 		go broker.This(thingy)
 	}
 }
@@ -152,7 +161,9 @@ func (broker *Broker) Start() {
 // StartModules launches each user-provided plugin registered in loadMOdules.go
 func (b *Broker) StartModules() {
 	for _, module := range b.Modules {
-		go module.Run(b)
+		go func(m Module) {
+			m.Run(b)
+		}(*module)
 	}
 }
 
@@ -179,7 +190,9 @@ func (w *WriteThread) Start() {
 				e.Broker = w.broker
 				apiPostMessage(e)
 			} else {
-				w.broker.Socket.WriteMessage(1, ejson)
+				if err := w.broker.Socket.WriteMessage(1, ejson); err != nil {
+					Logger.Error(`cannot send message: `, err)
+				}
 			}
 			Logger.Debug(string(ejson))
 			time.Sleep(time.Second)
@@ -195,12 +208,12 @@ func (w *WriteThread) Start() {
 func (qt *QuestionThread) Start() {
 	for {
 		// loop if there are no question callbacks
-		if qt.broker.cbIndex[Q] == nil {
+		if qt.broker.callbacks[Q].Index == nil {
 			time.Sleep(time.Second)
 			continue
 		}
 		// create & start new queues if necessary and send the questions
-		for _, qi := range qt.broker.cbIndex[Q] {
+		for _, qi := range qt.broker.callbacks[Q].Index {
 			question := qi.(*QuestionCallback)
 			user := question.User
 			if question.asked {
@@ -345,15 +358,19 @@ func (b *Broker) handleApiReply(thingy map[string]interface{}) {
 //broker.handleMessage() gets messages from broker.This() and handles them according
 // to the user-provided plugins currently loaded.
 func (b *Broker) handleMessage(thingy map[string]interface{}) {
-	if b.cbIndex[M] == nil {
+	if b.callbacks[M].Index == nil {
 		return
 	}
 	message := new(Event)
 	jthingy, _ := json.Marshal(thingy)
-	json.Unmarshal(jthingy, message)
+
+	if err := json.Unmarshal(jthingy, message); err != nil {
+		Logger.Error("Error in unmarshall", err)
+		return
+	}
 	message.Broker = b
 	botNamePat := fmt.Sprintf(`^(?:@?%s[:,]?)\s+(?:${1})`, b.Config.Name)
-	for _, cbInterface := range b.cbIndex[M] {
+	for _, cbInterface := range b.callbacks[M].Index {
 		callback := cbInterface.(*MessageCallback)
 
 		Logger.Debug(`Broker:: checking callback: `, callback.ID)
@@ -380,10 +397,10 @@ func (b *Broker) handleMessage(thingy map[string]interface{}) {
 }
 
 func (b *Broker) handleEvent(thingy map[string]interface{}) {
-	if b.cbIndex[E] == nil {
+	if b.callbacks[E].Index == nil {
 		return
 	}
-	for _, cbInterface := range b.cbIndex[E] {
+	for _, cbInterface := range b.callbacks[E].Index {
 		callback := cbInterface.(*EventCallback)
 		if keyVal, keyExists := thingy[callback.Key]; keyExists && keyVal != nil {
 			if matches, _ := regexp.MatchString(callback.Val, keyVal.(string)); matches {
