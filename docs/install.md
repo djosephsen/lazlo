@@ -10,7 +10,7 @@
 
 3: 
 ```
-	go get github.com/djosephsen/lazlo
+	go get github.com/klaidliadon/lazlo
 ```
 
 4: 
@@ -48,7 +48,7 @@ the first place after all.
 go get github.com/kr/godep
 ```
 
-4: Go to https://github.com/djosephsen/lazlo/fork to fork this repository (or click the fork button up there ^^) 
+4: Go to https://github.com/klaidliadon/lazlo/fork to fork this repository (or click the fork button up there ^^) 
 
 5 through like 27:  
 ```
@@ -56,7 +56,7 @@ mkdir -p $GOPATH/github.com/<yourgithubname>
 cd $GOPATH/github.com/<yourgithubname>
 git clone git@github.com:<yourgithubname>/lazlo.git
 cd lazlo
-git remote add upstream https://github.com/djosephsen/lazlo.git
+git remote add upstream https://github.com/klaidliadon/lazlo.git
 chmod 755 ./importfix.sh && ./importfix.sh
 go get
 godep save

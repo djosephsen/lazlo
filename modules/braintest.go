@@ -2,8 +2,9 @@ package modules
 
 import (
 	"fmt"
-	lazlo "github.com/djosephsen/lazlo/lib"
 	"regexp"
+
+	lazlo "github.com/klaidliadon/lazlo/lib"
 )
 
 var BrainTest = &lazlo.Module{
