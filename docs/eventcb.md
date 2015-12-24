@@ -8,7 +8,7 @@ someone uploading a snippet or image. The Function call looks like this:
 cb := broker.EventCallback(`type`, `foo`)
 ```
 
-The formal definition is [here](https://github.com/klaidliadon/lazlo/blob/master/lib/callbacks.go#L132) in callbacks.go
+The formal definition is [here](https://github.com/djosephsen/lazlo/blob/master/lib/callbacks.go#L132) in callbacks.go
 
 As you can see, *EventCallback* is a method on the lazlo.Broker type.
 Whenever you write a lazlo module, you'll always be passed a pointer to the

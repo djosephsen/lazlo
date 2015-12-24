@@ -1,7 +1,7 @@
 package modules
 
 import (
-	lazlo "github.com/klaidliadon/lazlo/lib"
+	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
 var RTMPing = &lazlo.Module{

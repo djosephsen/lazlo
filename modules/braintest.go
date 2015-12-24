@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	lazlo "github.com/klaidliadon/lazlo/lib"
+	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
 var BrainTest = &lazlo.Module{

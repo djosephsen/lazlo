@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	lazlo "github.com/klaidliadon/lazlo/lib"
+	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
 var Help = &lazlo.Module{

@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"time"
 
-	lazlo "github.com/klaidliadon/lazlo/lib"
+	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
 var Syn = &lazlo.Module{

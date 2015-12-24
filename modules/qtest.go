@@ -3,7 +3,7 @@ package modules
 import (
 	"fmt"
 
-	lazlo "github.com/klaidliadon/lazlo/lib"
+	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
 var QuestionTest = &lazlo.Module{

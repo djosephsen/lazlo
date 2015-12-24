@@ -1,8 +1,8 @@
 package main
 
 import (
-	lazlo "github.com/klaidliadon/lazlo/lib"
-	"github.com/klaidliadon/lazlo/modules"
+	lazlo "github.com/djosephsen/lazlo/lib"
+	"github.com/djosephsen/lazlo/modules"
 )
 
 func initModules(b *lazlo.Broker) error {
