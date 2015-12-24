@@ -1,9 +1,10 @@
 package main
 
 import (
-	lazlo "github.com/djosephsen/lazlo/lib"
 	"os/signal"
 	"syscall"
+
+	lazlo "github.com/klaidliadon/lazlo/lib"
 )
 
 func main() {

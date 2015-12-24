@@ -54,7 +54,7 @@ TMP='/tmp/SFTEMPFILE'
 PACKAGE=$(basename $(pwd))
 FLIST=$(find . -name '*.go')
 MINUS_THIS="${GOPATH}/src/"
-OGPATH=$(echo ${GOPATH}/src/github.com/djosephsen/lazlo| sed "s/$(pathEscape ${MINUS_THIS})//")
+OGPATH=$(echo ${GOPATH}/src/github.com/klaidliadon/lazlo| sed "s/$(pathEscape ${MINUS_THIS})//")
 OUR_PATH=$(pwd | sed -e "s/$(pathEscape ${MINUS_THIS})//")
 
 if [ -z ${1} ]

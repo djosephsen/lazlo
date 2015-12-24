@@ -12,7 +12,7 @@ cb := broker.LinkCallback(`option1`)
 cb := broker.LinkCallback(`option2`)
 ```
 
-The formal definition is [here](https://github.com/djosephsen/lazlo/blob/master/lib/httpserver.go#L55) in httpserver.go
+The formal definition is [here](https://github.com/klaidliadon/lazlo/blob/master/lib/httpserver.go#L55) in httpserver.go
 
 Link callbacks are a lot different from the other types, and you have to know a
 little bit more about how lazlo works to use them effectively. The first thing

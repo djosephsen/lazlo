@@ -2,13 +2,14 @@ package modules
 
 import (
 	"fmt"
-	lazlo "github.com/djosephsen/lazlo/lib"
-	luar "github.com/layeh/gopher-luar"
-	lua "github.com/yuin/gopher-lua"
 	"net/http"
 	"os"
 	"reflect"
 	"time"
+
+	lazlo "github.com/klaidliadon/lazlo/lib"
+	luar "github.com/layeh/gopher-luar"
+	lua "github.com/yuin/gopher-lua"
 )
 
 //luaMod implements a lua-parsing plugin for Lazlo.

@@ -2,11 +2,12 @@ package lib
 
 import (
 	"fmt"
-	"github.com/bmizerany/pat"
 	"net/http"
+
+	"github.com/bmizerany/pat"
 )
 
-//This map is redundant with the brokers cbIndex but there's
+//This map is redundant with the brokers callbacks.Index but there's
 //no way to get a reference to the broker into metaHandler so kludge
 var httpRoutes = make(map[string]*LinkCallback)
 
@@ -56,7 +57,7 @@ func (b *Broker) LinkCallback(p string, f ...func(http.ResponseWriter, *http.Req
 	path := fmt.Sprintf("linkcb/%s", p)
 	callback := &LinkCallback{
 		p:    p,
-		ID:   fmt.Sprintf("link:%d", len(b.cbIndex[L])),
+		ID:   fmt.Sprintf("link:%d", len(b.callbacks[L].Index)),
 		Path: path,
 		URL:  fmt.Sprintf("%s:%s/%s", b.Config.URL, b.Config.Port, path),
 		Chan: make(chan *http.Request),
