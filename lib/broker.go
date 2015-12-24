@@ -26,7 +26,7 @@ const L = "links"
 const Q = "questions"
 
 type cbIndex struct {
-	Index map[string]interface{} //callbacks.Index[type][id]=pointer
+	Index map[string]interface{} // Index[id]=pointer
 	*sync.Mutex
 }
 
@@ -38,7 +38,7 @@ type Broker struct {
 	Modules        map[string]*Module
 	Brain          Brain
 	ApiResponses   map[int32]chan map[string]interface{}
-	callbacks      map[string]cbIndex
+	callbacks      map[string]cbIndex //callbacks[type]Index
 	ReadFilters    []*ReadFilter
 	WriteFilters   []*WriteFilter
 	MID            int32
