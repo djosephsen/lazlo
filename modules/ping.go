@@ -1,9 +1,10 @@
 package modules
 
 import (
-	lazlo "github.com/djosephsen/lazlo/lib"
 	"math/rand"
 	"time"
+
+	lazlo "github.com/djosephsen/lazlo/lib"
 )
 
 var Syn = &lazlo.Module{
