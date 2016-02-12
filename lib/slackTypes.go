@@ -292,7 +292,7 @@ type Team struct {
 		GroupRetentionType     float64  `json:"group_retention_type,omitempty"`
 		HideReferers           bool     `json:"hide_referers,omitempty"`
 		MsgEditWindowMins      float64  `json:"msg_edit_window_mins,omitempty"`
-		RequireAtForMention    float64  `json:"require_at_for_mention,omitempty"`
+		RequireAtForMention    bool  `json:"require_at_for_mention,omitempty"`
 		RetentionDuration      float64  `json:"retention_duration,omitempty"`
 		RetentionType          float64  `json:"retention_type,omitempty"`
 		WhoCanArchiveChannels  string   `json:"who_can_archive_channels,omitempty"`
