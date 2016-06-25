@@ -13,5 +13,6 @@ func initModules(b *lazlo.Broker) error {
 	b.Register(modules.Help)
 	b.Register(modules.LuaMod)
 	b.Register(modules.QuestionTest)
+	b.Register(modules.Giphy)
 	return nil
 }
